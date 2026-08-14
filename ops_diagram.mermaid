@@ -1,0 +1,57 @@
+flowchart TB
+
+    subgraph TRAINING["Training Plane"]
+        DS["DS Training Job"] 
+        DATA["Snowflake / ODS / Feast Offline"] 
+        CML["ClearML"] 
+        S3["S3 Model Artifacts"] 
+        BT["Backtest / Validation"] 
+
+        DATA --> DS 
+        DS -->|params, metrics, lineage| CML 
+        DS -->|model package| S3 
+        DS --> BT 
+        BT --> CML
+    end 
+        
+    subgraph PROMOTION["Promotion Plane"]
+        REG["Registered Model"] 
+        TAG["Candidate / Challenger / Champion"] 
+        PR["Git PR - fcp-infrastructure"] 
+        ARGO["ArgoCD"] 
+
+        CML --> REG 
+        REG --> TAG 
+        TAG --> PR 
+        PR --> ARGO 
+    end 
+    
+    subgraph SERVING["Serving Plane"]
+        TRAEFIK["Traefik"] 
+        CHAMP["KServe Champion"] 
+        CHALL["KServe Challenger"] 
+        CLIENT["Camunda / Scoring Caller"] 
+
+        CLIENT --> TRAEFIK 
+        TRAEFIK --> CHAMP 
+        TRAEFIK -. shadow / weighted .-> CHALL 
+    end 
+    
+    S3 --> CHAMP 
+    S3 --> CHALL 
+    ARGO --> CHAMP 
+    ARGO --> CHALL 
+    
+    subgraph FEEDBACK["Feedback Plane"]
+        KAFKA["Kafka: fcp.predictions"] 
+        ODS["ODS / RTDW"] 
+        LABEL["Chargeback / Final Label"] 
+        EVID["Evidently"] 
+        GRAF["Grafana / Alerts"] 
+        CHAMP -->|async prediction log| KAFKA 
+        CHALL -->|async prediction log| KAFKA 
+        KAFKA --> ODS 
+        LABEL --> ODS 
+        ODS --> EVID 
+        EVID --> GRAF 
+    end
