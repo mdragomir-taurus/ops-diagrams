@@ -1,0 +1,14 @@
+flowchart TB 
+    P["Prediction T0"] --> K["fcp.predictions"] 
+    K --> O["ODS / RTDW"] 
+    L["Chargeback / Human Outcome \nDays Later"] --> O 
+    O --> J["Join by transaction/request ID"] 
+    J --> DATA["Labeled Dataset"] 
+    DATA --> E["Evidently Batch Evaluation"] 
+    E --> DRIFT["Feature / Score Drift"] 
+    E --> CC["Champion vs Challenger"] 
+    E --> PERF["Model Performance"] 
+    DRIFT --> G["Grafana"] 
+    CC --> G 
+    PERF --> G 
+    DATA --> F["Feast Offline / Next Training Cycle"]

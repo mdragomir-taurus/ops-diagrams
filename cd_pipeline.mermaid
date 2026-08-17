@@ -1,0 +1,8 @@
+flowchart LR 
+    CML["Approved ClearML Model"] --> R["Resolver"] 
+    R --> PR["Git PR"] 
+    PR --> REVIEW["Review / CODEOWNERS"] 
+    REVIEW --> MERGE["Merge"] 
+    MERGE --> ARGO["ArgoCD Sync"] 
+    ARGO --> KS["KServe InferenceService"] 
+    S3["Immutable S3 Artifact"] --> KS

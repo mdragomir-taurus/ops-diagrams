@@ -1,0 +1,7 @@
+flowchart LR 
+    M["Registered Model"] --> B["Backtest"] 
+    D["Historical Dataset"] --> B 
+    B --> R["Metrics"] 
+    R --> G{"Gate Passed?"} 
+    G -->|Yes| A["Eligible for Approval"] 
+    G -->|No| X["Stay Candidate"]

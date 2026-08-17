@@ -1,0 +1,5 @@
+stateDiagram-v2 
+    Challenger --> Champion: approved after evaluation 
+    Challenger --> Archived: poor performance 
+    Champion --> PreviousChampion: replaced 
+    PreviousChampion --> Champion: rollback

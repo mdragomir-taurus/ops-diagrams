@@ -1,0 +1,11 @@
+flowchart LR 
+    REQ["Scoring Request"] --> T["Traefik"] 
+    T -->|"User-hash based split (configurable)"| C["Champion"] 
+    T -->|"User-hash based split (configurable)"| CH["Challenger"] 
+    REQ -. "100% mirror (user-level)" .-> SH["Shadow Model"] 
+    C --> DECISION["Production Decision"] 
+    CH --> LOG["Evaluation Logging Only"] 
+    SH --> LOG2["Full Observability Logging"] 
+    C --> OUT["Response Returned to System"] 
+    CH --> DROP["Response Ignored"] 
+    SH --> DROP2["Response Ignored"]
