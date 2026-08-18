@@ -1,0 +1,5 @@
+flowchart LR 
+    EVENTS["Event Sources (Transactions / User Actions)"] --> FLINK["Flink Streaming Jobs"] 
+    FLINK --> ONLINEFS["Online Feature Store"] 
+    FLINK --> ODS["Snowflake ODS (via sink / batch sync)"] 
+    ONLINEFS --> KS["KServe InferenceService"]
