@@ -1,0 +1,19 @@
+flowchart LR
+
+    subgraph SYNC["Sync Model Serving Plane"]
+        CLIENT["Client / Camunda"] --> TR["Traefik"] 
+        TR --> KS["KServe InferenceService"] 
+        KS --> MODEL["Champion Model"] 
+        MODEL --> RESP["Immediate Response"] 
+    end 
+
+    subgraph ASYNC["Asynchronous Data & Feedback Plane (Kafka)"]
+        KS -. non-blocking event .-> LOG["Async Logger"] 
+        LOG --> KAFKA["Kafka: fcp.predictions"] 
+        KAFKA --> ODS["ODS / RTDW"] 
+        KAFKA --> MON["Monitoring / Drift"] 
+        KAFKA --> FEAST["Feature Store (Offline)"] 
+        LABEL["Delayed Labels"] --> ODS 
+        ODS --> TRAIN["Training Pipeline"] 
+    end
+

@@ -1,0 +1,9 @@
+flowchart LR 
+    REQ["Client Request (Camunda / API)"] --> TR["Traefik"] 
+    TR --> KS["KServe InferenceService"] 
+    KS --> MODEL["Model Execution (Champion)"] 
+    MODEL --> RESP["Immediate Response"] 
+    RESP --> TR 
+    TR --> CLIENT["Client Response"] 
+    %% optional async side output (non-blocking) 
+    KS -. async fire-and-forget .-> LOG["Async Event Logger (non-blocking)"]

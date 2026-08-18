@@ -1,0 +1,9 @@
+flowchart LR 
+    KS["KServe InferenceService"] --> LOG["Async Event Logger (non-blocking)"] 
+    LOG --> KAFKA["Kafka Topic: fcp.predictions"] 
+    KAFKA --> CONSUMER["Stream Consumers"] 
+    CONSUMER --> ODS["ODS / RTDW"] 
+    CONSUMER --> FEAST["Feature Store (Offline)"] 
+    CONSUMER --> MON["Monitoring / Drift / Evidently Batch"] 
+    LABEL["Delayed Labels (Chargeback / Fraud Outcome)"] --> ODS 
+    ODS --> TRAIN["Training Dataset Builder"]
