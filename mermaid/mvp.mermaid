@@ -1,0 +1,9 @@
+flowchart LR 
+    TRAIN["Train"] --> CLEARML["Track in ClearML"] 
+    CLEARML --> REG["Register"] 
+    REG --> VALIDATE["Validate"] 
+    VALIDATE --> APPROVE["Approve"] 
+    APPROVE --> PR["Git PR"] 
+    PR --> ARGO["ArgoCD"] 
+    ARGO --> KS["KServe"] 
+    KS --> LOG["Log Prediction + Model Version"]
