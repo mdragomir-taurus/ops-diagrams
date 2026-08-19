@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> Scratch 
+    Scratch --> Candidate: training completed 
+    Candidate --> Challenger: validation passed 
+    Candidate --> Rejected: validation failed 
+    Challenger --> Staging: promotion approved 
+    Challenger --> Rejected: rejected 
+    Staging --> Production: deployment successful 
+    Staging --> Rejected: failed validation 
+    Production --> Champion: selected best model 
+    Production --> Retired: replaced 
+    Champion --> Retired: superseded 
+    Retired --> [*] 
+    Rejected --> [*]
