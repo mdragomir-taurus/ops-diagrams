@@ -1,0 +1,28 @@
+flowchart LR
+
+    A[Model Training Pipeline]
+
+    B[Model Artifact Bundle]
+
+    C[model_meta.json]
+
+    D[JSON Schema Validation]
+
+    E[ClearML Registry]
+
+    F[S3 / Artifact Storage]
+
+    G[Champion Challenger]
+
+    H[Deployment Pipeline]
+
+
+    A --> B
+    B --> C
+
+    C --> D
+
+    D --> E
+    E --> F
+    E --> G
+    G --> H
