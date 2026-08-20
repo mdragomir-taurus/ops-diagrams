@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/coretech/boss-ailab-ml-train-pipeline/schemas/model_meta.schema.json",
+  "title": "Model artifact metadata (model_meta.json)",
+  "description": "Canonical metadata sidecar for one trained model artifact bundle. See docs/model-artifact-contract.md for the full spec and producer/consumer notes.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "clearml_task_id",
+    "task_name",
+    "project_name",
+    "model_family",
+    "created_at",
+    "metrics",
+    "threshold",
+    "features",
+    "artifacts",
+    "data"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Contract version. Bump on breaking field changes."
+    },
+    "clearml_task_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ClearML task id the model was trained under. \"local\" when trained with --no-clearml."
+    },
+    "task_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_family": {
+      "type": "string",
+      "enum": ["catboost", "xgboost", "random_forest"],
+      "description": "Matches --model on main.py for the base supervised trainers. Stacked/hybrid variants should use the base family that owns the leaf model artifact."
+    },
+    "model_version": {
+      "type": ["string", "null"],
+      "description": "Free-form version tag assigned at model-selection time (e.g. by scripts/select_best_imtu_model.py). Absent for ad-hoc training runs."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when this metadata was built."
+    },
+    "git_revision": {
+      "type": ["string", "null"],
+      "description": "Full git commit SHA of the pipeline code that produced this model, when known."
+    },
+    "notes": {
+      "type": ["string", "null"]
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Test-set metrics. Nullable fields cover metrics that don't apply to every model family or threshold method.",
+      "required": ["roc_auc", "pr_auc"],
+      "additionalProperties": false,
+      "properties": {
+        "roc_auc": { "type": "number" },
+        "pr_auc": { "type": "number" },
+        "accuracy": { "type": ["number", "null"] },
+        "f1": { "type": ["number", "null"] },
+        "precision": { "type": ["number", "null"] },
+        "recall": { "type": ["number", "null"] },
+        "logloss": { "type": ["number", "null"] },
+        "confusion": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "tp": { "type": "integer" },
+            "fp": { "type": "integer" },
+            "tn": { "type": "integer" },
+            "fn": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "threshold": {
+      "type": "object",
+      "description": "The single operating point this artifact is meant to be served at, plus the decision-band cuts derived from it (see fraud_pipeline/metrics/decision_bands.py). Canonical replacement for the task/threshold/operating_threshold/best_threshold naming spread across the codebase.",
+      "required": ["value", "method"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The tuned decision threshold. Canonical value — same number as decision_band_info.deny_min when decision bands are enabled."
+        },
+        "method": {
+          "type": "string",
+          "description": "threshold_method used to tune `value` (e.g. business_fpr_cap, fp_clv, f1)."
+        },
+        "accept_max": { "type": ["number", "null"] },
+        "deny_min": { "type": ["number", "null"] },
+        "bands": {
+          "type": ["object", "null"],
+          "description": "Human-readable band descriptions, e.g. {\"ACCEPT\": \"score < 0.31\", ...} — same shape as decision_band_info.bands.",
+          "additionalProperties": { "type": "string" }
+        },
+        "challenge_max_txns": { "type": ["integer", "null"] },
+        "challenge_max_customers": { "type": ["integer", "null"] }
+      }
+    },
+    "features": {
+      "type": "object",
+      "required": ["names", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "names": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Maps a stable artifact name to where it lives. `path` is relative to this model_meta.json file when the bundle is exported to a directory (e.g. packages/*/models/); `clearml_name` is the name it was uploaded under via task.upload_artifact, when applicable.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["path"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "clearml_name": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "required": ["train_path", "test_path"],
+      "additionalProperties": false,
+      "properties": {
+        "dataset_name": { "type": ["string", "null"] },
+        "train_path": { "type": "string", "minLength": 1 },
+        "valid_path": { "type": ["string", "null"] },
+        "test_path": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
