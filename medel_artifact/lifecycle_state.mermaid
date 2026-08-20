@@ -1,0 +1,25 @@
+stateDiagram-v2
+
+    [*] --> Scratch
+
+    Scratch --> Candidate
+
+    Candidate --> Challenger
+
+    Candidate --> Rejected
+
+    Challenger --> Staging
+
+    Challenger --> Rejected
+
+    Staging --> Production
+
+    Production --> Champion
+
+    Production --> Retired
+
+    Champion --> Retired
+
+    Rejected --> [*]
+
+    Retired --> [*]

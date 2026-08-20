@@ -1,0 +1,17 @@
+sequenceDiagram
+
+    participant Train as Training Pipeline
+    participant Meta as model_meta.json
+    participant Schema as JSON Schema
+    participant Registry as ClearML
+
+
+    Train->>Meta: Generate metadata
+
+    Meta->>Schema: Validate
+
+    alt Invalid
+    Schema-->>Train: Validation Error
+    else Valid
+    Schema-->>Registry: Register Model
+end
