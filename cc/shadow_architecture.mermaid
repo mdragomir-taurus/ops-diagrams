@@ -1,0 +1,10 @@
+flowchart LR 
+    A[Customer Transaction] 
+    A --> B[Terminus] 
+    B --> C[Champion Model] 
+    B --> D[Challenger Model<br/>Shadow Only] 
+    C --> E[Production Decision] 
+    D --> F[Prediction Event] 
+    C --> F 
+    F --> G[Analytics / Evaluation] 
+    G --> H[Champion vs Challenger Comparison]
