@@ -1,0 +1,18 @@
+flowchart LR
+    A[Generic Router]
+    -.->|Non-blocking result handoff| B[Prediction Event Publisher]
+
+    B -->|Kafka Producer| C[Kafka]
+
+    C --> D[Flink]
+
+    D --> E[(MongoDB)]
+    D --> F[(S3)]
+
+    G[Final Fraud Labels]
+    --> C
+
+    C --> D
+
+    E --> H[Evaluation / Reporting]
+    F --> H

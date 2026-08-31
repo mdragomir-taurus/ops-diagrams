@@ -1,0 +1,11 @@
+flowchart TD
+    A[Prediction Event]
+    --> C[Flink / Evaluation Pipeline]
+
+    B[Fraud Label Event ~2 weeks later]
+    --> C
+
+    C -->|transaction_id| D[Prediction + Actual Label]
+
+    D --> E[Champion Evaluation]
+    D --> F[Challenger Evaluation]

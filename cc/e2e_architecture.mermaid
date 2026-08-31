@@ -1,0 +1,48 @@
+flowchart TD
+
+    CVS[CVS]
+    TERM[Terminus / Zeebe Worker]
+    ROUTER[Generic Router - Go]
+
+    CHAMP[Champion Model<br/>FastAPI / Kubernetes]
+    SHADOW[Challenger Model<br/>FastAPI / Kubernetes]
+
+    PUBLISHER[Model Prediction Event Publisher<br/>Go]
+    KAFKA[Apache Kafka<br/>fcp.model.predictions.v1]
+    FLINK[Apache Flink<br/>Champion/Challenger Evaluation Job]
+
+    MONGO[(MongoDB<br/>model_prediction_comparisons)]
+    S3[(AWS S3<br/>Historical Evaluation Data)]
+
+    CLEARML[ClearML<br/>Model Registry / Metadata]
+
+    PROM[Prometheus]
+    GRAFANA[Grafana]
+
+    CVS --> TERM
+    TERM -->|Synchronous HTTP| ROUTER
+
+    ROUTER -->|Synchronous HTTP| CHAMP
+    CHAMP --> ROUTER
+
+    ROUTER -.->|Asynchronous HTTP| SHADOW
+    SHADOW -.-> ROUTER
+
+    ROUTER -->|Champion response immediately| TERM
+
+    ROUTER -.->|Non-blocking| PUBLISHER
+
+    PUBLISHER --> KAFKA
+    KAFKA --> FLINK
+
+    FLINK --> MONGO
+    FLINK --> S3
+
+    CLEARML -.-> CHAMP
+    CLEARML -.-> SHADOW
+
+    ROUTER --> PROM
+    CHAMP --> PROM
+    SHADOW --> PROM
+
+    PROM --> GRAFANA

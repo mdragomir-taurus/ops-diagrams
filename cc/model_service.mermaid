@@ -1,0 +1,18 @@
+flowchart LR
+    A[CVS / Transaction Flow]
+    --> B[Terminus / Zeebe Worker]
+
+    B -->|HTTP| C[Generic Router - Go]
+
+    C -->|HTTP Sync| D[Champion Model - FastAPI]
+    D --> C
+
+    C -->|HTTP Async| E[Shadow Model - FastAPI]
+    E --> C
+
+    C -->|Champion Response| B
+
+    D --> F[Prometheus]
+    E --> F
+    C --> F
+    F --> G[Grafana]

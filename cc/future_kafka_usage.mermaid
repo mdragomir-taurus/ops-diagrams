@@ -1,0 +1,8 @@
+flowchart LR
+    A[Generic Router]
+    --> B[Champion]
+    B --> A
+    A -->|Immediately| C[Terminus]
+
+    A -.->|Async / Non-blocking| D[Prediction Event Publisher]
+    D --> E[Kafka]
