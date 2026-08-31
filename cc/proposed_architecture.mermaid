@@ -1,0 +1,22 @@
+flowchart TD
+    A[Terminus / Zeebe Worker] --> B[Generic Router]
+
+    B -->|Sync| C[Champion]
+    B -.->|Async| D[Shadow]
+
+    C --> B
+    D --> B
+
+    B -->|Champion response| A
+
+    B -.->|Structured Prediction Event| E[Prediction Event Channel]
+
+    E --> F[Persistence Consumer]
+    F --> G[(Evaluation Store)]
+
+    G --> H[DS / MLOps Evaluation]
+    G --> I[Grafana / Reports]
+
+    J[Final Fraud Label] --> K[Label Join Process]
+    G --> K
+    K --> L[Champion vs Challenger Evaluation]

@@ -1,0 +1,11 @@
+flowchart LR
+    A[Terminus / Zeebe Worker] --> B[Generic Router]
+
+    B -->|Synchronous| C[Champion Model]
+    C -->|Authoritative Response| B
+    B -->|Return Response| A
+
+    B -.->|Asynchronous Shadow Call| D[Shadow Model]
+    D -.->|Shadow Response| B
+
+    B -.-> E[Current: Logging Only]

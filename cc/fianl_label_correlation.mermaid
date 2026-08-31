@@ -1,0 +1,12 @@
+flowchart LR
+    A[Transaction ID] --> B[Champion Prediction]
+    A --> C[Challenger Prediction]
+
+    D[Final Label Available Later] --> E[Evaluation Join]
+
+    B --> E
+    C --> E
+
+    E --> F[Champion Metrics]
+    E --> G[Challenger Metrics]
+    E --> H[Promotion Decision]
