@@ -1,0 +1,225 @@
+new-customers-model:
+image:
+tag: 2.4.1
+pullPolicy: IfNotPresent
+repository: 101838717447.dkr.ecr.us-east-1. amazonaws. com/caf-ml-models
+service:
+create: true
+ports:
+name: http
+port: 80
+containerPorts:
+http: 80
+livenessProbe:
+httpGet:
+path: /api/health
+port: http
+scheme: HTTP
+initialDelaySeconds: 5
+periodSeconds: 30
+successThreshold: 1
+failureThreshold: 3
+timeoutSeconds: 10
+readinessProbe:
+tcpSocket:
+port: http
+initialDelaySeconds: 5
+periodSeconds: 2
+podMonitor:
+enabled: true
+namespace: fcp_terminus
+port: http
+scrapeInterval: 75s
+<<: *commonServiceConfig
+env:
+name: MODELS_BASIC_AUTH_USERNAME
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: ACH_MODEL_BASIC_AUTH_USERNAME
+name: MODELS_BASIC_AUTH_PASSWORD
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: ACH MODEL_BASIC_AUTH PASSWORD
+name: MODELS PORT
+value: "80"
+name: MODELS AWS SERVICE URL
+value: ""
+
+
+name: MODELS S3 BUCKET NAME
+
+name: MODELS VERSION
+value: "2.4.1"
+name: MODELS MONGODB DATABASE NAME
+value: "boss-caf-ach-fraud-model-dev"
+name: MODELS MONGODB_CONNECTION
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: ACH_MODEL MONGODB_CONNECTION
+name: MODELS_PRICING FEATURES URL
+value: "http://signature-api.ailab-dev.svc.cluster.local:8080/ap1/V1/pricing/features"
+name: MODELS_PRICING_THRESHOLD
+value: "0.5"
+name: MODELS_OAUTH_ACCESS_TOKEN_URL
+value: "https://sso.mr-dev.bossrevolution.com/oauth2/token"
+name: MODELS_OAUTH_CLIENT_ID
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: MODELS_OAUTH_ CLIENT ID
+name: MODELS_OAUTH_CLIENT_SECRET
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: MODELS_OAUTH CLIENT SECRET
+name: MODELS_OAUTH_SCOPE
+value: "korell/signatures:read"
+replicas: 2
+autoscaling:
+enabled: true
+minReplicas: 2
+maxReplicas: 4
+targetCPUUtilizationPercentage: 80
+targetMemoryUtilizationPercentage: null
+resources :
+requests:
+cpu: 200m
+memory: 1368Mi
+ephemeral-storage: "5Gi" # Request for ephemeral storage
+limits:
+cpu: 1000m
+memory: 2048Mi
+ephemeral-storage: "10Gi" # Limit tor ephemeral storage (logs. tmp files,etc.)
+ingress:
+
+ingress:
+create: true
+class: nginx-mt
+annotations:
+nginx.ingress.kubernetes. io/backend-protocol: HTTP
+rules:
+name: internal
+host: new-customers-model.mr-dev.bossrevolution.com
+port: http
+dns:
+create: true
+recordType: CNAME
+recordTTL: 180
+target: 1b-int-hal.mr-dev.bossrevolution.com
+
+new-customers-model-challenger:
+enabled: true
+image:
+tag: 2.5.2
+pullPolicy: IfNotPresent
+repository: 101838717447.dkr.ecr.us-east-1.amazonaws. com/caf-ml-models
+service:
+create: true
+ports:
+name: http
+port: 80
+containerPorts:
+http: 80
+livenessProbe:
+httpGet:
+path: /api/health
+port: http
+scheme: HTTP
+initialDelaySeconds: 5
+periodSeconds: 30
+successThreshold: 1
+failureThreshold: 3
+timeoutSeconds: 10
+readinessProbe:
+tcpSocket:
+port: http
+initialDelaySeconds: 5
+periodSeconds: 2
+podMonitor:
+
+env:
+name: MODELS_BASIC_AUTH_USERNAME
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: ACH_MODEL_BASIC_AUTH_USERNAME
+name: MODELS_BASIC_AUTH PASSWORD
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: ACH_MODEL_BASIC_AUTH PASSWORD
+name: MODELS PORT
+value: "80"
+name: MODELS_WORKERS_COUNT
+value: "3"
+name: MODELS_AWS_SERVICE_URL
+value:
+name: MODELS_S3 BUCKET NAME
+value: "fraud-model-service-files-dev"
+name: MODELS VERSION
+value: "2.5.2"
+name: MODELS MONGODB DATABASE NAME
+value: "boss-caf-ach-fraud-model-dev"
+name: MODELS_MONGODB_CONNECTION
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: ACH_MODEL_MONGODB_CONNECTION
+name: MODELS_NEW_CUSTOMERS FEATURES_URL
+value: "http://signature-api.ailab-dev.svc.cluster.local:8080/api/v1/antifraud/features"
+name: MODELS_NEW_CUSTOMERS_FEATURES_TIMEOUT
+value: "7"
+name: MODELS_OAUTH ACCESS_TOKEN URL
+value: "https://sso.mr-dev.bossrevolution.com/oauth2/token"
+name: MODELS_OAUTH_CLIENT_ID
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: MODELS OAUTH CLIENT ID
+name: MODELS_OAUTH_CLIENT_SECRET
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: MODELS_OAUTH_CLIENT_SECRET
+name: MODELS OAUTH SCOPE
+value: "korell/signatures:read"
+name: MODELS_MONGODB_CONNECTION
+name: MODELS_NEW_CUSTOMERS_FEATURES_URL
+value: "http://signature-api.ailab-dev.svc.cluster.local:8080/api/v1/antifraud/features"
+name: MODELS_NEW_CUSTOMERS_FEATURES_TIMEOUT
+value: "7"
+name: MODELS_OAUTH_ACCESS_TOKEN_URL
+value: "https://sso.mr-dev.bossrevolution.com/oauth2/token"
+name: MODELS_OAUTH_CLIENT_ID
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: MODELS_OAUTH_CLIENT_ID
+name: MODELS_OAUTH_CLIENT_SECRET
+valueFrom:
+secretKeyRef:
+name: generic-model
+key: MODELS_OAUTH_CLIENT_SECRET
+name: MODELS_OAUTH_SCOPE
+value: "korell/signatures:read"
+replicas: 2
+autoscaling:
+enabled: true
+minReplicas: 2
+maxReplicas: 2
+targetCPUUtilizationPercentage: 80
+targetMemoryUtilizationPercentage: 80
+resources :
+requests:
+cpu: 200m
+memory: 1368Mi
+ephemeral-storage: "5Gi" # Request for ephemeral storage
+limits:
+cpu: 1000m
+memory: 2048Mi
+ephemeral-storage: "10Gi" # Limit for ephemeral storage (logs, tmp files, etc.)
+ingress:
+create: false
