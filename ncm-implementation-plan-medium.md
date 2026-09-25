@@ -6,17 +6,26 @@ The NCM deployment flow starts when the Data Science team uploads a completed mo
 
 Uploading a model does **not** automatically build, deploy, or release it. The upload only makes the model available for selection.
 
+The Board member or authorized delegate must explicitly approve the selected version in the UI **before any release processing starts**. In this plan, "user" means that authorized decision-maker.
+
 The intended user flow is:
 
 ```text
 Select model version
-    ↓
-Click Build & deploy
-    ↓
-Wait for Ready for release
-    ↓
-Confirm Release = Yes
+    |
+    v
+Confirm Deploy & release = Yes
+    |
+    v
+Automatically build, test, and deploy the approved version
+    |
+    v
+Automatically validate and activate it after all checks pass
 ```
+
+**No, cancel, or no answer means no release job starts.** Selection only saves a draft. There is no build, artifact download, validation job, deployment, or other background release work before explicit **Yes**.
+
+That single approval authorizes the complete operation. There is no second approval after deployment. Existing production services and monitoring continue running throughout.
 
 Model training is outside the scope of this plan.
 
@@ -28,31 +37,34 @@ The MLOps platform should automate the technical steps. Users should trigger the
 
 ## 2. Main Principles
 
-### 2.1 Separate selection, preparation, deployment, and release
+### 2.1 Put explicit approval before all release processing
 
-The main lifecycle stages must stay separate.
+Selection is a draft action. Build, deployment, validation, and activation are automated stages of one approved operation.
 
 | Action | Trigger | Result | Can it receive application traffic? |
 |---|---|---|---|
-| Publish | DS completes the S3 upload | Model appears in the catalog | No |
-| Select / save draft | User chooses a model version and role | Draft selection is saved | No |
-| Build & deploy | User clicks **Build & deploy** | Jenkins builds the serving image and Argo CD deploys the candidate | No |
-| Ready for release | Candidate passes deployment and validation checks | Candidate is ready for approval | No |
-| Release | User confirms **Release = Yes** | Candidate becomes active behind the selected role Service | Yes |
+| Publish | DS completes the S3 upload | Model is available to list in the catalog; no release job | No |
+| Select / save draft | User chooses a model version and role | Draft selection is saved; no release job | No |
+| No / cancel / no answer | Explicit Yes has not been given | Remain in draft; no release work starts | No |
+| Approve | User confirms **Deploy & release = Yes** | Backend records the exact approved request and starts the pipeline | No |
+| Build, deploy, and validate | Approved pipeline runs automatically | Tested image and isolated candidate are prepared | No |
+| Activate | Candidate passes all checks and the approval is still valid | Automation switches the selected role Service | Yes, according to existing routing settings |
 | Set traffic | User changes Generic Router percentages | Router applies the selected distribution | Only released models receive traffic |
 
-Changing the draft selection must not start a build or deployment.
+Changing the draft selection must not start Jenkins, download model artifacts, run validation jobs, build images, write deployment changes to Git, or create Kubernetes resources.
 
-For example, if the user selects `3.5`, then changes the draft to `3.6`, only `3.6` should be prepared when **Build & deploy** is clicked.
+For example, if the user selects `3.5`, then changes the draft to `3.6`, neither version is prepared until the user explicitly approves **Yes** for `3.6`.
 
-**Build & deploy** is one UI action that starts two automated stages:
+The UI can use a **Deploy & release** action with a confirmation dialog:
 
-1. build and test the serving image;
-2. deploy and validate the candidate.
+```text
+Deploy and release Challenger 3.6 in this environment?
 
-**Release** is a separate approval step.
+No  -> keep draft; start nothing
+Yes -> build, test, deploy, validate, then activate automatically
+```
 
-Release must default to **No** and must never be inherited from a previous selection.
+Approval defaults to **No** and must never be inherited by a different model, code revision, environment, or role. There must be no separate button that starts preparation before this approval.
 
 ---
 
@@ -168,13 +180,14 @@ Selecting a draft must not change Git or trigger Argo CD.
 | User action | Git change | Argo CD result |
 |---|---|---|
 | Select / save draft | None | No deployment change |
-| Build & deploy | Candidate release is written to Git | Candidate Deployment is created |
-| Release = Yes | Active role assignment is updated in Git | Role Service switches to the approved candidate |
+| No / cancel / no answer | None | No deployment change |
+| Yes, then successful build and image tests | Pipeline writes candidate release to Git | Candidate Deployment is created |
+| Same approved operation passes deployed-candidate checks | Pipeline updates active role assignment in Git | Role Service switches to the approved candidate |
 
-Candidate preparation:
+One approved operation produces two automated Git changes:
 
 ```text
-Build & deploy
+Deploy & release = Yes
     ↓
 Jenkins
     ↓
@@ -183,16 +196,10 @@ Candidate Git commit
 Argo CD
     ↓
 Candidate Deployment
-```
-
-Release:
-
-```text
-Release = Yes
     ↓
-Release backend
+Candidate validation passes
     ↓
-Assignment Git commit
+Assignment Git commit (automatic under the same approval)
     ↓
 Argo CD
     ↓
@@ -201,7 +208,11 @@ Role Service update
 
 These Git changes should be automated.
 
+Git holds Helm values and templates; Helm renders Kubernetes manifests, and Argo CD reconciles them into Kubernetes. A YAML file's role depends on its location and contents: values configure the chart, templates generate resources, and rendered manifests describe Deployments and Services.
+
 The MLOps engineer should configure the pipeline, repository permissions, Helm templates, and Argo CD integration once. Normal releases should not require manual YAML edits.
+
+If repository policy requires a human review of each generated commit, that is an additional manual gate and must be documented separately; it is not assumed in this target flow.
 
 ---
 
@@ -227,11 +238,11 @@ They do not represent a specific model version.
 
 A candidate release should have its own Deployment and release labels.
 
-Before Release approval, the current Champion and Challenger Services must continue to point to the currently released versions.
+Before approval, no candidate is prepared. After approval, the current Champion and Challenger Services continue to point to the currently released versions while the candidate is built, deployed, and checked.
 
 The candidate may receive internal synthetic validation requests, but it must not receive normal application traffic.
 
-At release time, automation updates the Service selector.
+After all candidate checks pass, automation updates the Service selector under the original approval. Selectors should use a unique serving-release ID, because a model version can have several inference-code revisions.
 
 Example:
 
@@ -240,7 +251,7 @@ Before release
 
 new-customers-model-challenger
         |
-        +--> model-version=3.4
+        +--> serving-release=ncm-3-4-r1
 ```
 
 ```text
@@ -248,7 +259,7 @@ After release
 
 new-customers-model-challenger
         |
-        +--> model-version=3.6
+        +--> serving-release=ncm-3-6-r1
 ```
 
 The DNS name stays the same. Only the selected backend changes.
@@ -259,31 +270,34 @@ The DNS name stays the same. Only the selected backend changes.
 
 ```mermaid
 flowchart TD
-    S3["DS uploads model to S3"] --> Catalog["Model registered in catalog"]
+    S3["DS uploads model to S3"] --> Catalog["Publication metadata available in catalog"]
     Catalog --> Draft["User selects model as draft"]
-    Draft --> Build["User clicks Build & deploy"]
-    Build --> Jenkins["Jenkins gets exact model and inference code"]
+    Draft --> Approve{"Deploy and release: explicit Yes?"}
+    Approve -->|"No / cancel / no answer"| Hold["Keep draft and current release; start no release work"]
+    Approve -->|"Yes"| Snapshot["Record approval and exact inputs"]
+    Snapshot --> Jenkins["Jenkins validates and fetches exact model and inference code"]
     Jenkins --> Image["Build and test serving image"]
     Image --> ECR["Push tested image to ECR"]
     ECR --> Git["Write candidate configuration to Git"]
     Git --> Deploy["Argo CD deploys candidate"]
     Deploy --> Validate["Run readiness and prediction checks"]
-    Validate --> Ready["Ready for release"]
-    Ready --> Approve["User confirms Release = Yes"]
-    Approve --> Assign["Update active role assignment"]
+    Validate --> Checks{"All checks pass; approval still valid?"}
+    Checks -->|"Yes: automatic"| Assign["Update active role assignment in Git"]
+    Checks -->|"No"| Stop["Stop; keep current role assignment"]
     Assign --> Live["Stable role Service points to new release"]
     Live --> Router["Generic Router applies configured traffic %"]
+    Traffic["User manually sets routing percentages in existing UI"] -.-> Router
 ```
 
-The key rule is:
+Any build or deployment failure also stops the operation before activation.
 
-> **A model can be selected and prepared without changing production traffic. Production changes only after explicit Release approval.**
+> **No explicit Yes means no release processing. Yes starts the full automated operation; successful checks allow activation without another approval.**
 
 ---
 
 ## 4. Publish and Select a Draft
 
-After the DS upload is complete, the publishing process registers the model in the catalog.
+After the DS upload is complete, the publication metadata can be listed in the catalog. The DS publishing script may register that metadata as part of publishing. This does not enqueue a release job.
 
 The catalog entry should include:
 
@@ -296,11 +310,12 @@ The catalog entry should include:
 
 If the inference-code mapping is missing, the model may appear in the catalog but must be marked incomplete.
 
-**Build & deploy** must remain blocked until the mapping is available.
+**Deploy & release = Yes** must remain blocked until the mapping is available. Catalog display and draft persistence use metadata; they must not trigger artifact downloads or background preparation. Full compatibility and artifact verification happen only after approval.
 
 Publishing a model must not:
 
 - start Jenkins;
+- download artifacts or run background validation;
 - build an image;
 - update deployment configuration;
 - create Kubernetes resources;
@@ -317,13 +332,13 @@ Draft Challenger:   3.5
 
 If the user changes the draft to `3.6`, production remains on `3.4`.
 
-Only the version captured when **Build & deploy** is clicked should be prepared.
+Only the exact version and code combination captured when **Yes** is confirmed may be prepared.
 
 ---
 
-## 5. Build & Deploy
+## 5. Automated Execution After Yes
 
-When the user clicks **Build & deploy**, the backend creates a tracked operation and captures the exact request.
+Only after the user confirms **Deploy & release = Yes**, the backend records the approval, creates a tracked operation, and enqueues Jenkins. There is no upload-triggered, draft-triggered, or speculative preparation pipeline.
 
 The operation should record:
 
@@ -335,9 +350,13 @@ The operation should record:
 - inference-code Git commit;
 - build definition revision;
 - draft revision;
-- operation ID.
+- operation ID;
+- approver and approval timestamp;
+- current role assignment and routing settings shown during approval.
 
-The pipeline then runs the following steps.
+The backend must enforce this gate for every start/retry API, not only in the UI. Duplicate clicks must return the same operation rather than start duplicate builds. A changed draft cannot replace an operation's captured inputs; a different target requires a new explicit Yes. Serialize operations for the same environment and role, and recheck the expected active assignment before switching it.
+
+The approved pipeline then runs the following steps.
 
 ### Step 1 — Validate the release definition
 
@@ -390,7 +409,7 @@ Start the packaged FastAPI service and verify:
 - feature names, types, and ordering are correct;
 - required feature-service integrations are available.
 
-If the selected model needs a new feature that is not available in the target environment, the candidate must not become Ready for release.
+If the selected model needs a new feature that is not available in the target environment, stop the operation before activation.
 
 ### Step 5 — Push the tested image to ECR
 
@@ -432,13 +451,13 @@ Verify:
 - sample predictions pass;
 - required capacity is available.
 
-If all checks pass, mark the candidate:
+If all checks pass, the candidate is technically ready. The backend rechecks the original approval and captured inputs, then automatically continues to activation:
 
 ```text
-Ready for release
+Validating -> Activating -> Released
 ```
 
-The candidate is now prepared, but it is still not active behind the Champion or Challenger Service.
+Readiness is an internal checkpoint, not a waiting state for a second user approval. Until the assignment update in section 7, the candidate remains isolated from live and mirrored application traffic.
 
 ---
 
@@ -449,10 +468,11 @@ The UI should use clear lifecycle states.
 | State | Meaning | Next action |
 |---|---|---|
 | Published | Model is registered in the catalog | Select |
-| Draft | User selected the model for a role | Build & deploy |
-| Preparing | Build/deployment/validation is running | Wait or inspect failure |
-| Ready for release | Candidate is deployed and verified | Approve Release |
-| Releasing | Role assignment is being applied | Wait for verification |
+| Draft / awaiting approval | User selected the model; no release work has started | Review and explicitly confirm Yes, or remain in draft |
+| Approved / queued | Yes is recorded for exact inputs | Pipeline starts automatically |
+| Preparing | Approved build and deployment are running | Wait or inspect failure |
+| Validating | Automated checks run against the isolated candidate | Automatically activate if checks and approval remain valid |
+| Activating | Role assignment is being applied under the original approval | Wait for verification |
 | Released | Candidate is active behind the role Service | Monitor / adjust traffic |
 | Failed | Preparation or release failed | Review and retry |
 
@@ -460,24 +480,22 @@ The UI should show separately:
 
 - current released version;
 - current draft version;
-- prepared serving release;
+- approved operation's exact target and serving release identity;
 - operation status.
 
-A successful Jenkins build must not automatically release the model.
+A successful build alone is insufficient: deployment, readiness, prediction checks, and approval verification must all pass. After they pass, activation is automatic within the approved operation.
 
-A healthy candidate Deployment must also not automatically release the model.
-
-Release approval must be enforced by the backend, not only by UI controls.
+Selecting No or closing the confirmation leaves the model in draft. The only approval comes before the pipeline starts.
 
 ---
 
-## 7. Release Approval
+## 7. Upfront Approval and Automatic Activation
 
-Before the user approves a release, the UI should show:
+Before any release job starts, the UI should show:
 
 - target environment;
 - selected role;
-- prepared serving release;
+- selected model version, artifact identity, and exact inference-code revision;
 - current released version;
 - current routing percentage;
 - current live/shadow routing state.
@@ -485,13 +503,17 @@ Before the user approves a release, the UI should show:
 The user must explicitly confirm:
 
 ```text
-Release = Yes
+Deploy & release = Yes
 ```
 
-After approval, the backend should:
+The confirmation must explain that Yes starts build and deployment and authorizes activation after successful checks. If the role currently has traffic, the approved model will inherit that traffic share when activated. The user can adjust routing separately before approving if required.
 
-1. verify the candidate is still Ready for release;
-2. confirm that approval matches the exact prepared release;
+No, cancel, or no answer starts nothing. The current release stays active. Approval is never inferred from saving a selection, an S3 event, a Slack message, or an existing approval for a different revision.
+
+After the approved pipeline in section 5 passes all checks, the backend should automatically:
+
+1. verify the candidate is still healthy and its prediction checks passed;
+2. confirm that the original approval is valid for the exact prepared release and the expected role assignment has not changed;
 3. update the role assignment in Git;
 4. wait for Argo CD reconciliation;
 5. verify the Kubernetes Service selector;
@@ -505,7 +527,8 @@ The audit record should include:
 - release ID;
 - previous release;
 - target role;
-- Git revision;
+- approval timestamp and approved inputs;
+- candidate and assignment Git revisions;
 - timestamp;
 - result.
 
@@ -533,7 +556,7 @@ Traffic    -> 10%
 
 If Challenger traffic is `0%`, the Service can switch to the new release while live traffic remains `0%`.
 
-If the user cancels, selects No, or takes no action, the currently released version remains active.
+Selecting No or canceling before approval requires no rollback because no release work has started. Canceling an operation after Yes is a separate action: automation must stop safely and reconcile any Git changes already made. It must not claim that already-applied changes were undone merely because a job was canceled.
 
 ---
 
@@ -567,9 +590,9 @@ Routing policy
     = How much traffic goes to Champion / Challenger?
 ```
 
-Before release, the candidate must receive no normal live or mirrored application traffic.
+Before activation, the candidate must receive no normal live or mirrored application traffic.
 
-Internal synthetic validation traffic is allowed.
+Internal synthetic validation traffic is allowed only during the approved pipeline. Approval is required even if the selected role currently has 0% traffic.
 
 ---
 
@@ -596,7 +619,7 @@ The UI should show:
 - operation ID;
 - retry option.
 
-If a failure happens during Release after the Git assignment has already changed, the UI should show both:
+If a failure happens during activation after the Git assignment has already changed, the UI should show both:
 
 ```text
 Desired assignment
@@ -604,6 +627,8 @@ Observed assignment
 ```
 
 The platform must verify actual state instead of assuming that the change either fully succeeded or fully failed.
+
+Retries must remain within the original approved inputs. A different model, code revision, environment, or role requires a fresh Yes. Repeated requests must not create competing operations or allow a stale operation to overwrite a newer assignment.
 
 ---
 
@@ -621,9 +646,9 @@ Challenger -> 3.6
 To promote `3.6`:
 
 1. select `3.6` for Champion;
-2. reuse the tested serving release if it already exists;
-3. prepare it only if required;
-4. confirm **Release = Yes** for Champion;
+2. explicitly confirm **Deploy & release = Yes** for Champion;
+3. only then reuse the tested serving release, or build/deploy it if required;
+4. automatically activate it after checks pass under that approval;
 5. verify the Champion Service;
 6. keep routing changes as a separate user decision.
 
@@ -634,6 +659,8 @@ Promotion should not happen automatically based only on monitoring results.
 ### Rollback
 
 Rollback also uses the normal release mechanism.
+
+Select the previous release and explicitly confirm Yes before rollback processing starts. An existing image or Deployment does not bypass approval.
 
 Use the previous tested image digest together with its recorded configuration.
 
@@ -662,13 +689,14 @@ Verify the new assignment before removing previous capacity.
 | DS uploads `3.5` and `3.6` | Both appear in the catalog | `3.4` |
 | User selects `3.5` | Draft only | `3.4` |
 | User changes draft to `3.6` | Draft changes only | `3.4` |
-| User clicks Build & deploy for `3.6` | Only `3.6` is prepared | `3.4` |
-| `3.6` passes validation | `3.6` becomes Ready for release | `3.4` |
-| User confirms Release = Yes | Challenger Service switches to `3.6` | `3.6` |
+| User selects No, cancels, or does nothing | No background release processing starts | `3.4` |
+| User explicitly confirms Deploy & release = Yes for `3.6` | Approval is recorded; only `3.6` starts preparation | `3.4` |
+| Pipeline builds, tests, and deploys `3.6` | Isolated candidate is checked automatically | `3.4` |
+| All checks pass and approval is still valid | Automation switches the Challenger Service; no second approval | `3.6` |
 
 This example shows the main behavior:
 
-> **Changing a draft does not affect production. Only Build & deploy prepares a release, and only Release approval activates it.**
+> **Before Yes: draft only, no preparation. After Yes: build, deploy, validate, and activate automatically.**
 
 ---
 
@@ -678,8 +706,8 @@ This example shows the main behavior:
 |---|---|
 | DS publisher / S3 | Store immutable model artifacts, metadata, checksums, and validation samples |
 | Inference-code owner | Maintain versioned inference/feature logic and define model-code compatibility |
-| Model UI / backend | Manage drafts, Build & deploy, Release approval, operation state, concurrency, and audit |
-| Jenkins | Fetch exact inputs, build/test image, push to ECR, and write candidate configuration |
+| Model UI / backend | Manage drafts, enforce upfront Yes, capture approved inputs, track operations, automate activation, and audit |
+| Jenkins | Run only after approval: fetch exact inputs, build/test image, push to ECR, and write candidate configuration |
 | ECR | Store immutable tested serving images |
 | Git / Helm | Store candidate releases and active role assignments |
 | Argo CD | Reconcile Git state into Kubernetes |
@@ -710,8 +738,8 @@ The new design requires:
 - combined model + inference-code image build;
 - FastAPI local bundled-model loading;
 - model catalog and draft-selection behavior;
-- **Build & deploy** UI/backend action;
-- separate **Release** approval;
+- one **Deploy & release** UI/backend action with explicit Yes before any release processing;
+- backend approval enforcement and automatic activation after successful checks;
 - candidate deployment workflow;
 - release operation tracking;
 - retry and deduplication handling;
@@ -731,20 +759,20 @@ The first implementation should use one NCM candidate and prove the complete lif
 2. The model is registered in the catalog.
 3. The exact inference-code mapping is added.
 4. User selects the model as a draft.
-5. User clicks **Build & deploy**.
-6. Jenkins builds the combined serving image.
-7. Jenkins tests the image and pushes it to ECR.
-8. Jenkins writes the candidate configuration to Git.
-9. Argo CD deploys the candidate.
-10. Automated checks mark it **Ready for release**.
-11. User reviews the prepared release.
-12. User confirms **Release = Yes**.
-13. The backend updates the role assignment in Git.
+5. Verify that selecting No, closing the dialog, or waiting starts no background release work.
+6. User reviews the exact target and explicitly confirms **Deploy & release = Yes**.
+7. The backend records approval and starts Jenkins with the captured inputs.
+8. Jenkins fetches and verifies inputs, then builds the combined serving image.
+9. Jenkins tests the image and pushes it to ECR.
+10. Jenkins writes the candidate configuration to Git.
+11. Argo CD deploys the candidate; FastAPI loads the local bundled model.
+12. Automated readiness and prediction checks pass.
+13. The backend rechecks the original approval and automatically updates the role assignment in Git.
 14. Argo CD updates the stable Service.
-15. The platform verifies the actual serving version.
-16. The existing Generic Router UI controls the traffic percentage.
+15. The platform verifies the actual serving version and marks it Released.
+16. The existing Generic Router UI controls traffic percentages as a separate human decision.
 17. The team monitors the release.
-18. Promotion or rollback follows the same release process.
+18. Promotion or rollback requires a new upfront Yes for that operation.
 
 This first phase should prove the main lifecycle before adding more advanced automation.
 
@@ -754,21 +782,23 @@ This first phase should prove the main lifecycle before adding more advanced aut
 
 The first implementation is complete when:
 
-1. Uploading a model does not automatically build or deploy it.
-2. Changing a draft does not change active traffic.
-3. Only the version captured by **Build & deploy** is prepared.
+1. Uploading or cataloging a model starts no background release work.
+2. Selecting or changing a draft starts no Jenkins job, artifact download, validation job, image build, deployment Git change, or Kubernetes change.
+3. No, cancel, and no answer leave the current release unchanged and enqueue nothing.
 4. Jenkins uses the exact model, code commit, dependencies, and build definition.
 5. The ECR image contains both the model and compatible inference code.
 6. Candidate startup does not require S3 model access.
 7. Missing or invalid bundled model files cause readiness to fail.
 8. A candidate can be created even when no Deployment for that model version already exists.
-9. A Ready candidate receives no application traffic before Release approval.
-10. Release defaults to **No**.
-11. Release approval is bound to the exact reviewed serving release.
+9. Only explicit **Yes** starts processing; direct backend calls and retries cannot bypass approval.
+10. Approval defaults to **No** and is bound to the exact reviewed model, code, environment, role, and draft revision.
+11. After Yes, build, deploy, validation, and activation run automatically; there is no second approval after readiness. Candidates receive no application traffic until activation, and failed checks prevent the role switch.
 12. Release keeps the same stable Champion/Challenger DNS names.
 13. Release does not change Generic Router percentages.
 14. Model or inference-code changes create a new serving release identity.
 15. Rollback uses the previous tested image digest and saved configuration.
+16. Draft edits cannot replace approved inputs; duplicate or stale operations cannot activate an unintended release.
+17. Approval is required before processing even when an image already exists or the role has 0% traffic.
 
 ---
 
@@ -781,7 +811,9 @@ Model appears in catalog
         ↓
 User selects draft
         ↓
-User clicks Build & deploy
+User explicitly confirms Deploy & release = Yes
+        ↓
+Backend records exact approval and starts the pipeline
         ↓
 Jenkins builds and tests exact model + code
         ↓
@@ -789,11 +821,9 @@ Image is pushed to ECR
         ↓
 Git + Argo CD deploy candidate
         ↓
-Candidate becomes Ready for release
+Candidate passes automated validation
         ↓
-User confirms Release = Yes
-        ↓
-Stable role Service switches to approved release
+Stable role Service automatically switches to approved release
         ↓
 Generic Router keeps the configured traffic %
         ↓
@@ -804,15 +834,14 @@ Promote or rollback through the same process
 
 Main principle:
 
-> **Selection does not deploy. Deployment does not release. Release happens only after explicit approval.**
+> **Without explicit Yes, no release processing starts. With Yes, the system builds, deploys, validates, and activates the exact approved version.**
 
 The platform automates the technical execution.
 
 The user remains responsible for:
 
 - model selection;
-- Build & deploy request;
-- Release approval;
+- explicit Yes before any release processing;
 - traffic percentage;
 - promotion;
 - rollback.
