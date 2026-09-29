@@ -1,9 +1,9 @@
-flowchart LR 
-    TRAIN["Train"] --> CLEARML["Track in ClearML"] 
-    CLEARML --> REG["Register"] 
-    REG --> VALIDATE["Validate"] 
-    VALIDATE --> APPROVE["Approve"] 
-    APPROVE --> PR["Git PR"] 
-    PR --> ARGO["ArgoCD"] 
-    ARGO --> KS["KServe"] 
-    KS --> LOG["Log Prediction + Model Version"]
+flowchart TD
+    Draft["Select model and role; save draft"] --> Confirm{"Deploy & release?"}
+    Confirm -->|"Yes"| Approved["Record exact approval; start automated release pipeline"]
+    Confirm -->|"No"| Declined["Release declined"]
+    Confirm -->|"Cancel / close dialog"| Dismissed["Confirmation dismissed"]
+    Confirm -->|"No response"| Pending["Approval remains pending"]
+    Declined --> Hold["Keep draft and current release; start no release work"]
+    Dismissed --> Hold
+    Pending --> Hold

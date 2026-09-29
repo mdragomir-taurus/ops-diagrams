@@ -67,7 +67,7 @@ flowchart TD
 | Approve | User confirms **Deploy & release = Yes** | Backend records the exact approved request and starts the pipeline | No |
 | Prepare, deploy, and validate | Approved pipeline runs automatically | Jenkins runs the selected image with the selected model and compares prediction API outputs with fixed reference results; an isolated candidate is then deployed and checked (section 5, steps 4 and 8) | No |
 | Activate | Candidate passes all checks and the approval is still valid | Automation switches the selected role Service | Yes, according to existing routing settings |
-| Set traffic | User changes Generic Router percentages | Router applies the selected distribution | Only released models receive traffic |
+| Set routing policy | User changes live percentages or the shadow ON/OFF control | Router applies the selected live distribution and shadow execution state | Only released models receive traffic |
 
 Changing the draft selection must not start Jenkins, download model artifacts, run validation jobs, build images, write deployment changes to Git, or create Kubernetes resources.
 
@@ -255,6 +255,8 @@ new-customers-model-challenger  = Challenger
 
 They do not represent a specific model version.
 
+For the initial implementation, shadow calls also use the stable Challenger endpoint. The shadow version is therefore the released Challenger version; section 8 explains version selection and the independent execution switch.
+
 A candidate release should have its own Deployment and release labels.
 
 Before approval, no candidate is prepared. After approval, the current Champion and Challenger Services continue to point to the currently released versions while the candidate is prepared, deployed, and checked.
@@ -307,8 +309,8 @@ flowchart TD
     Checks -->|"Yes: automatic"| Assign["Update active role assignment in Git"]
     Checks -->|"No"| Stop["Stop; keep current role assignment"]
     Assign --> Live["Stable role Service points to new release"]
-    Live --> Router["Generic Router applies configured traffic %"]
-    Traffic["User manually sets routing percentages in existing UI"] -.-> Router
+    Live --> Router["Generic Router applies live percentages and shadow ON/OFF state"]
+    Traffic["User sets live percentages and shadow execution in routing UI"] -.-> Router
 ```
 
 Any build or deployment failure also stops the operation before activation.
@@ -538,7 +540,7 @@ Before any release job starts, the UI should show:
 - selected model version, artifact identity, and exact inference-code revision;
 - current released version;
 - current routing percentage;
-- current live/shadow routing state.
+- current shadow ON/OFF state and the observed Challenger model version and serving-release ID.
 
 The user must explicitly confirm:
 
@@ -546,7 +548,7 @@ The user must explicitly confirm:
 Deploy & release = Yes
 ```
 
-The confirmation must explain that Yes starts runtime image build or reuse, testing, and deployment and authorizes activation after successful checks. If the role currently has traffic, the approved model will inherit that traffic share when activated. The user can adjust routing separately before approving if required.
+The confirmation must explain that Yes starts runtime image build or reuse, testing, and deployment and authorizes activation after successful checks. If the role currently has traffic, the approved model will inherit that traffic share when activated. For a Challenger release, show that an existing shadow ON setting will also apply to the new version after activation. The user can adjust live routing or switch shadow OFF separately before approving if required.
 
 No, cancel, or no answer starts nothing. The current release stays active. Approval is never inferred from saving a selection, an S3 event, a Slack message, or an existing approval for a different revision.
 
@@ -576,7 +578,7 @@ The audit record should include:
 
 Release changes the model behind the role endpoint.
 
-It does not automatically change Generic Router percentages.
+It does not automatically change Generic Router live percentages or the shadow ON/OFF setting.
 
 Example:
 
@@ -596,43 +598,55 @@ Traffic    -> 10%
 
 If Challenger traffic is `0%`, the Service can switch to the new release while live traffic remains `0%`.
 
+If shadow is ON, mirrored calls follow the Challenger Service to the new release after activation, even at `0%` live traffic. If shadow is OFF, it stays OFF.
+
 Selecting No or canceling before approval requires no rollback because no release work has started. Canceling an operation after Yes is a separate action: automation must stop safely and reconcile any Git changes already made. It must not claim that already-applied changes were undone merely because a job was canceled.
 
 ---
 
-## 8. Routing Percentage Is a Separate Control
+## 8. Live Routing and Shadow Execution Are Separate Controls
 
-The existing Generic Router UI should continue to control traffic.
+The Generic Router UI must expose live routing and shadow execution separately. Existing percentage controls remain; any missing shadow controls and router behavior are new implementation work.
 
-Example:
+| Control | User action | Effect |
+|---|---|---|
+| Live traffic percentages | Set Champion/Challenger shares, totaling 100% | Select which role's response determines the application result. |
+| Shadow execution | Set **ON** or **OFF**, then apply; default is **OFF** | ON adds asynchronous Challenger calls for requests served live by Champion. OFF stops new shadow calls once the router applies the change. |
+| Shadow model version | Select the required version for **Challenger** and complete **Deploy & release = Yes** | After validation and activation, the stable Challenger endpoint serves that exact model/runtime release. The routing UI displays the observed model version and serving-release ID. |
 
-```text
-Champion   90%
-Challenger 10%
+The initial implementation has one released Challenger shared by live and shadow calls. It does not provide an independently selected third model. Requests already served live by Challenger do not trigger a duplicate call to that same model. Shadow responses are recorded for comparison and never determine the application result; timeouts or errors must not fail the live request. Shadow calls need bounded concurrency and timeouts so they cannot exhaust live-serving resources.
+
+### Select the shadow version
+
+1. Select the target environment and desired model version in the catalog, with role **Challenger**. This only saves a draft.
+2. For shadow-only evaluation, set live routing to **Champion 100% / Challenger 0%** and apply it. Keep shadow OFF while preparing the first shadow release.
+3. Confirm **Deploy & release = Yes** for that exact Challenger version. The standard pipeline tests, deploys, and activates it. Drafts and unvalidated candidates cannot be shadow targets.
+4. Wait until the operation is Released and the UI shows the expected observed Challenger model version, serving-release ID, and readiness. Then turn shadow ON and apply the setting.
+
+If the desired version is already the released, healthy Challenger, use it directly without another release. To change the shadow version later, release the new version as Challenger through the same approved flow. Existing shadow calls continue to the old release until the Service switches; in-flight calls may finish on the old version. Record the actual serving-release ID with each shadow result. If shadow remains ON, new calls follow the new release automatically, as disclosed in the release confirmation.
+
+### Turn shadow execution ON or OFF
+
+**ON:** The backend verifies that the displayed Challenger release is still the active, healthy assignment before applying the switch. It must reject a stale target rather than enable shadow for a version the user did not see. No candidate is built or deployed by this action. For the initial implementation, each Champion-served request is eligible for a shadow call; calls may be dropped when concurrency limits are reached.
+
+**OFF:** Apply the switch without running Jenkins or redeploying the model. Once applied by the routers, no new shadow calls are dispatched; existing calls finish or time out. OFF does not remove the Challenger Deployment or change its live percentage. To stop all application-driven Challenger execution, set both **shadow OFF** and **Challenger live traffic 0%**.
+
+The UI must show requested and observed shadow state separately while a change is applying, and confirm success only after all active router instances report the new configuration. Audit the actor, environment, configuration revision, target release, previous/new state, and result. New router instances must load the current configuration before handling traffic; shadow defaults to OFF when no valid configuration exists.
+
+Example: **Champion 100% / Challenger 0%, shadow ON, released Challenger 3.6**:
+
+```mermaid
+flowchart LR
+    Request["Application request"] --> Router["Generic Router"]
+    Router --> Champion["Champion: live prediction"]
+    Champion --> Result["Application result"]
+    Router -.->|"Shadow ON: asynchronous copy"| Challenger["Released Challenger 3.6: shadow prediction"]
+    Challenger -.-> Comparison["Record score and serving-release ID for comparison"]
 ```
 
-Changing traffic percentage must not:
+Switching shadow OFF removes the asynchronous call in this example; the live path remains unchanged. **Challenger live traffic 0% alone does not disable shadow execution.**
 
-- build a new image;
-- deploy a candidate;
-- change the draft selection;
-- release a model.
-
-The release workflow must also not modify traffic percentages automatically.
-
-This keeps two responsibilities separate:
-
-```text
-Model release
-    = Which model is behind Champion / Challenger?
-
-Routing policy
-    = How much traffic goes to Champion / Challenger?
-```
-
-Before activation, the candidate must receive no normal live or mirrored application traffic.
-
-Internal synthetic validation traffic is allowed only during the approved pipeline. Approval is required even if the selected role currently has 0% traffic.
+Changing live percentages or shadow ON/OFF must not build an image, deploy a candidate, change a draft, or release a model. A release must preserve the current routing settings. Before activation, a candidate receives no normal live or mirrored application traffic; only internal synthetic validation requests are allowed during the approved pipeline.
 
 ---
 
@@ -747,7 +761,7 @@ This example shows the main behavior:
 |---|---|
 | DS publisher / S3 | Store immutable model artifacts, metadata, checksums, and golden samples with fixed inputs and reference outputs; agree numeric tolerances with the inference-code owner |
 | Inference-code owner | Maintain versioned inference/feature logic, compatibility mapping, and API/feature-contract tests; agree reference cases and tolerances with DS |
-| Model UI / backend | Manage drafts, enforce upfront Yes, capture approved inputs, track operations, automate activation, and audit |
+| Model UI / backend | Manage drafts and approval, automate releases, expose live/shadow controls and observed release identity, and audit release/routing changes |
 | Jenkins | Run only after approval: validate separate model artifacts, build/reuse runtime image, test the pairing, push new images to ECR, and write candidate configuration |
 | ECR | Store immutable tested runtime images containing inference code and dependencies only |
 | Git / Helm | Store runtime image digests, S3 model references/checksums, candidate configuration, and active role assignments |
@@ -755,8 +769,8 @@ This example shows the main behavior:
 | Kubernetes | Run candidate/released Deployments and stable role Services |
 | Container startup script | Download the configured S3 model with retries, verify identity/checksums, and start the API server only after successful preparation |
 | FastAPI application | Load the verified local model in its lifespan hook and provide readiness/prediction endpoints |
-| Generic Router | Control Champion/Challenger traffic distribution |
-| Prometheus / Grafana | Monitor health, errors, latency, routing, and model identity |
+| Generic Router | Apply live percentages and runtime shadow ON/OFF; mirror asynchronously to the released Challenger with bounded execution; report applied configuration and actual serving identity |
+| Prometheus / Grafana | Monitor health, errors, latency, routing, model identity, and shadow calls/errors/drops by serving release |
 
 ---
 
@@ -785,6 +799,7 @@ The new design requires:
 - one **Deploy & release** UI/backend action with explicit Yes before any release processing;
 - backend approval enforcement and automatic activation after successful checks;
 - candidate deployment workflow;
+- runtime shadow ON/OFF controls, observed Challenger version/state, configuration readback, and bounded asynchronous shadow execution in the Generic Router;
 - release operation tracking;
 - retry and deduplication handling;
 - audit history.
@@ -814,7 +829,7 @@ The first implementation should use one NCM candidate and prove the complete lif
 13. The backend rechecks the original approval and automatically updates the role assignment in Git.
 14. Argo CD updates the stable Service.
 15. The platform verifies the actual serving version and marks it Released.
-16. The existing Generic Router UI controls traffic percentages as a separate human decision.
+16. In the Generic Router UI, verify shadow ON/OFF against the released Challenger at 0% live traffic, then set live percentages separately as required.
 17. The team monitors the release.
 18. Promotion or rollback requires a new upfront Yes for that operation.
 
@@ -838,12 +853,15 @@ The first implementation is complete when:
 10. Approval defaults to **No** and is bound to the exact reviewed model, code, environment, role, and draft revision.
 11. After Yes, runtime image build/reuse, testing, deployment, validation, and activation run automatically; there is no second approval after readiness. Candidates receive no application traffic until activation, and failed checks prevent the role switch.
 12. Release keeps the same stable Champion/Challenger DNS names.
-13. Release does not change Generic Router percentages.
+13. Release preserves Generic Router live percentages and shadow ON/OFF state. The release confirmation shows that an enabled shadow follows a newly activated Challenger version.
 14. Model or inference-code changes create a new serving release identity. A compatible model-only release reuses the runtime image without rebuilding it and passes tests for the new pairing.
 15. Rollback uses the previous tested runtime image digest, exact S3 model location/checksums, and saved configuration. Referenced images and S3 artifacts remain available for active releases and rollback retention.
 16. Draft edits cannot replace approved inputs; duplicate or stale operations cannot activate an unintended release.
 17. Approval is required before processing even when an image already exists or the role has 0% traffic.
 18. Each model/runtime pairing has a passing report tied to the exact image, model checksums, golden sample, and test-suite revision. Required prediction, contract, startup, and failure checks pass before candidate deployment; deployed prediction and feature-service checks pass before activation.
+19. With Champion 100%, Challenger 0%, and shadow ON, synthetic application requests produce Champion responses and asynchronous scores from the displayed released Challenger. Shadow scores never affect the live result. Drafts and candidates receive no mirrored application traffic.
+20. Shadow OFF stops new shadow calls after all active routers apply the configuration, without changing live percentages or running a deployment. Existing calls may finish or time out; shadow failures or concurrency limits do not fail live requests.
+21. The routing UI displays requested/observed shadow state and the actual target model version and serving-release ID, rejects stale-target enable requests, and audits changes. Switching the Challenger release preserves the toggle and records the actual release used for each score.
 
 ---
 
@@ -874,7 +892,7 @@ Candidate passes automated validation
         ↓
 Stable role Service automatically switches to approved release
         ↓
-Generic Router keeps the configured traffic %
+Generic Router keeps live percentages and shadow ON/OFF state
         ↓
 Monitor
         ↓
