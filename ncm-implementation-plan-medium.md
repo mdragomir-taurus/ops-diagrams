@@ -31,7 +31,7 @@ Model training is outside the scope of this plan.
 
 The Docker image must contain only the prediction runtime, inference code, and required dependencies. Model artifacts remain separate in S3 and must not be included in the image.
 
-Each serving release pairs an exact runtime image digest with an immutable S3 model location, artifact checksums, and deployment configuration. FastAPI downloads and verifies the selected model at startup before loading it.
+Each serving release pairs an exact runtime image digest with an immutable S3 model location, artifact checksums, and deployment configuration. A container startup script downloads and verifies the selected model before starting the API server. The FastAPI application's lifespan hook then loads the verified local model before the Pod becomes Ready.
 
 The MLOps platform should automate the technical steps. Users should trigger the process through the UI rather than asking engineers to manually update deployment files for each release.
 
@@ -43,13 +43,29 @@ The MLOps platform should automate the technical steps. Users should trigger the
 
 Selection is a draft action. Runtime image build or reuse, deployment, validation, and activation are automated stages of one approved operation.
 
+The approval flow below shows what happens when the user responds to the **Deploy & release** confirmation or leaves it unanswered:
+
+```mermaid
+flowchart TD
+    Draft["Select model and role; save draft"] --> Confirm{"Deploy & release?"}
+    Confirm -->|"Yes"| Approved["Record exact approval; start automated release pipeline"]
+    Confirm -->|"No"| Declined["Release declined"]
+    Confirm -->|"Cancel / close dialog"| Dismissed["Confirmation dismissed"]
+    Confirm -->|"No response"| Pending["Approval remains pending"]
+    Declined --> Hold["Keep draft and current release; start no release work"]
+    Dismissed --> Hold
+    Pending --> Hold
+```
+
+**No response** means the user has not answered the confirmation; waiting never counts as approval. The user can return to the draft and explicitly approve it later. Canceling here means dismissing the confirmation before Yes; canceling an operation already started after Yes is covered in section 7. Section 3 shows the automated pipeline that follows Yes.
+
 | Action | Trigger | Result | Can it receive application traffic? |
 |---|---|---|---|
 | Publish | DS completes the S3 upload | Model is available to list in the catalog; no release job | No |
 | Select / save draft | User chooses a model version and role | Draft selection is saved; no release job | No |
-| No / cancel / no answer | Explicit Yes has not been given | Remain in draft; no release work starts | No |
+| Leave release unapproved | User chooses No, cancels/closes the dialog, or gives no response | Remain in draft; no release work starts | No |
 | Approve | User confirms **Deploy & release = Yes** | Backend records the exact approved request and starts the pipeline | No |
-| Prepare, deploy, and validate | Approved pipeline runs automatically | Runtime image is built or reused, the selected model/runtime pair is tested, and an isolated candidate is prepared | No |
+| Prepare, deploy, and validate | Approved pipeline runs automatically | Jenkins runs the selected image with the selected model and compares prediction API outputs with fixed reference results; an isolated candidate is then deployed and checked (section 5, steps 4 and 8) | No |
 | Activate | Candidate passes all checks and the approval is still valid | Automation switches the selected role Service | Yes, according to existing routing settings |
 | Set traffic | User changes Generic Router percentages | Router applies the selected distribution | Only released models receive traffic |
 
@@ -57,14 +73,7 @@ Changing the draft selection must not start Jenkins, download model artifacts, r
 
 For example, if the user selects `3.5`, then changes the draft to `3.6`, neither version is prepared until the user explicitly approves **Yes** for `3.6`.
 
-The UI can use a **Deploy & release** action with a confirmation dialog:
-
-```text
-Deploy and release Challenger 3.6 in this environment?
-
-No  -> keep draft; start nothing
-Yes -> build or reuse runtime image, test, deploy, validate, then activate automatically
-```
+For example, the **Deploy & release** confirmation asks: "Deploy and release Challenger 3.6 in this environment?" The responses follow the approval flow above.
 
 Approval defaults to **No** and must never be inherited by a different model, code revision, environment, or role. There must be no separate button that starts preparation before this approval.
 
@@ -72,9 +81,11 @@ Approval defaults to **No** and must never be inherited by a different model, co
 
 ### 2.2 Keep the runtime image and model artifacts separate
 
-The current runtime downloads the model from S3 when FastAPI starts.
+The current runtime downloads the model from S3 when FastAPI starts. In the target design, separate artifact preparation from application initialization.
 
-Keep this startup download/retry behavior for the initial implementation. Defer `initContainer`.
+For the initial implementation, move the existing download/retry logic into a container startup script (entrypoint). It retrieves and verifies the approved artifacts, then starts the API server only after preparation succeeds. Defer `initContainer`; the entrypoint provides this separation without adding another container.
+
+FastAPI supports application initialization through its [lifespan hook](https://fastapi.tiangolo.com/advanced/events/), including loading a model into memory. Downloading artifacts there is technically possible, but it is not required by FastAPI. This plan assigns S3 retrieval, retries, and artifact verification to the startup script; the application loads the prepared local model and serves predictions. This also avoids repeating downloads for each API worker's lifespan initialization.
 
 Store the runtime and model separately:
 
@@ -101,8 +112,8 @@ The model and inference code must therefore be recorded and tested as one servin
 | Area | Current approach | Target approach |
 |---|---|---|
 | ECR image | Prediction runtime only | Prediction runtime + inference code + locked dependencies; no model artifacts |
-| Model retrieval | FastAPI downloads from S3 during startup | Keep startup download/retry; use the approved immutable S3 location and verify checksums |
-| FastAPI startup | Download, retry, then load | Download exact model, verify identity and checksums, then load before Ready |
+| Model retrieval | Runtime downloads from S3 during FastAPI startup | Container startup script downloads with retries from the approved immutable S3 location and verifies identity/checksums before starting the API server |
+| FastAPI startup | Download, retry, then load | Application lifespan hook loads the verified local model before Ready |
 | Rollback unit | Runtime + model configuration | Previous tested runtime image digest + exact S3 model identity/checksums + recorded configuration |
 
 S3 remains the source of model artifacts for validation and runtime startup. Retain the exact files for every active release and for the rollback retention period.
@@ -155,15 +166,15 @@ An image may be reused when the exact code commit, dependency set, pinned base i
 
 Kubernetes should deploy the image by digest rather than by a mutable tag.
 
-Deployment configuration supplies the serving release ID, exact model version, S3 bucket/key or immutable prefix, and expected artifact checksums. FastAPI downloads the selected files into a runtime directory such as:
+Deployment configuration supplies the serving release ID, exact model version, S3 bucket/key or immutable prefix, and expected artifact checksums. The container startup script downloads the selected files into a runtime directory such as:
 
 ```text
 /opt/ncm/model/model.cbm
 ```
 
-This directory is populated at container startup and is not part of the Docker image. Verify required files, model identity, and checksums before loading. Use the configured model for the Pod's lifetime; changing models creates a new candidate release.
+This directory is populated at container startup and is not part of the Docker image. The startup script verifies required files, model identity, and checksums before starting the API server. It must complete before API workers start, and the application must treat the prepared files as read-only. The application's lifespan hook loads the model from this directory. Use the configured model for the Pod's lifetime; changing models creates a new candidate release.
 
-If download retries are exhausted, files are missing, identity or checksum verification fails, or the model cannot be loaded, readiness must fail. Do not substitute another model or an unverified cached copy.
+If download retries are exhausted, files are missing, or identity or checksum verification fails, the startup script exits with an error without starting the API server. If the model cannot be loaded, application startup fails. In either case, the Pod must not become Ready. Do not substitute another model or an unverified cached copy.
 
 Each new or restarted Pod needs S3 read access to its configured artifact location. Provide access through the deployment's workload identity; keep credentials outside the image. Existing healthy Pods continue serving their loaded model while a candidate downloads and validates its model.
 
@@ -289,7 +300,8 @@ flowchart TD
     Test --> ECR["Push new runtime image or record existing ECR digest"]
     ECR --> Git["Write runtime digest and S3 model configuration to Git"]
     Git --> Deploy["Argo CD deploys candidate"]
-    Deploy --> Load["FastAPI downloads, verifies, and loads model from S3"]
+    Deploy --> Prepare["Container startup script downloads and verifies S3 model"]
+    Prepare --> Load["FastAPI lifespan loads verified local model"]
     Load --> Validate["Run readiness and prediction checks"]
     Validate --> Checks{"All checks pass; approval still valid?"}
     Checks -->|"Yes: automatic"| Assign["Update active role assignment in Git"]
@@ -412,18 +424,25 @@ If a compatible tested image already exists for the exact runtime build inputs, 
 
 ### Step 4 — Test the runtime with the selected model
 
-Start the new or reused runtime image with the approved S3 model configuration. Keep validation files outside the image; the test runner uses the golden sample from the separate validation workspace. Verify:
+The **model/runtime pair** is the exact model artifact plus the exact runtime image containing the inference code and dependencies. Jenkins tests them together by starting that image in an isolated test environment and sending requests to its prediction API.
 
-- the image and its layers contain no model artifacts, model metadata, or golden samples;
-- FastAPI downloads the exact configured model from S3 with retries;
-- required files, checksums, and model identity are verified before the model loads and readiness succeeds;
-- download failure, invalid files, or model-load failure keep readiness false;
-- golden-sample predictions succeed for the selected model/image combination;
-- request/response format matches Generic Router expectations;
-- feature names, types, and ordering are correct;
-- required feature-service integrations are available.
+**Test inputs.** DS publishes `golden_sample.json` with the model: fixed prediction requests, any feature values needed to reproduce them, and expected prediction outputs. DS and the inference-code owner define the expected feature contract and numeric tolerances before release testing. The sample and tolerances must be versioned and covered by the release's artifact checksums. Expected results come from the reference inference implementation; the pipeline must not generate its expectations from the runtime under test. Keep these files in the separate validation workspace, outside the image.
 
-If the selected model needs a new feature that is not available in the target environment, stop the operation before activation.
+**Execution.** Jenkins starts the image through its normal container startup script with the approved S3 location, checksums, and inference configuration. For a new build, test the exact local image ID and push that same image in step 5 without rebuilding it. For a reused image, pull and test its recorded ECR digest. A separate test runner calls the running API and performs these checks:
+
+| Check | How it is tested | Pass condition |
+|---|---|---|
+| Startup and model identity | Start with a clean model directory, exercise S3 download and verification, and wait for readiness within a configured timeout. Compare the loaded model identity and verified checksums with the approved release. | The startup script verifies the exact artifacts; FastAPI loads the local model; readiness succeeds with the expected identity. |
+| Prediction correctness | Send every golden request through the real API, preprocessing, feature ordering, model inference, and response serialization. Compare each output with its stored reference result. | Every required case passes: categorical outputs match exactly; numeric outputs are finite and within the recorded tolerance. A successful HTTP response alone is insufficient. |
+| Feature and API contracts | Check feature names, types, ordering, and missing-value behavior against the model contract. Exercise valid and invalid requests and check response fields, types, and status codes against Generic Router expectations. | All contract checks pass, including documented handling of invalid or missing inputs. |
+| Failure handling | In disposable test instances, inject download failures, missing/corrupt files, checksum mismatches, and model-load errors. Verify retry behavior and startup failure after retries are exhausted. | No instance serves predictions with an invalid or substitute model; unsuccessful initialization never becomes ready. Fault injection does not modify the approved S3 artifacts. |
+| Image contents | Inspect the built image and its layers separately from the running container's downloaded files. | Model artifacts, model metadata, and golden samples are absent from the image and its build context. |
+
+For repeatable golden tests, configure test feature services to return the fixed feature values from the sample. This exercises the runtime's feature client and inference path while keeping input data stable. The deployed-candidate checks in step 8 also verify connectivity and compatibility with the target environment's actual feature services.
+
+For example, if a reference score is `0.8123` and its recorded absolute tolerance is `0.0001`, the test passes only when `abs(actual_score - 0.8123) <= 0.0001`. These numbers are illustrative; DS and the inference-code owner set tolerances appropriate to the model.
+
+**Result and release gate.** Jenkins saves a report containing the tested image identity, model location/checksums, golden-sample checksum, inference-code and test-suite revisions, tolerances, per-case expected/actual results, and failure logs. Link the report to the operation and serving release; record the ECR digest from step 5 against the same tested image. Missing reference data, readiness timeout, or any failed required check stops the pipeline before candidate deployment. Reusing an image does not reuse another model's test result.
 
 ### Step 5 — Record the runtime image in ECR and the serving release
 
@@ -453,9 +472,11 @@ Argo CD detects the Git change and creates the candidate Deployment.
 
 Kubernetes pulls the exact ECR runtime image digest and supplies the candidate's model configuration and S3 read access.
 
-FastAPI downloads the model from the configured S3 location using its retry logic, verifies the files and expected identity, and loads the model. The Pod stays unready until this completes successfully.
+The container startup script downloads the model from the configured S3 location with retries and verifies the files, checksums, and expected identity. Only after verification succeeds does it start the API server. The FastAPI application's lifespan hook loads the verified local model. The Pod stays unready until this completes successfully.
 
 ### Step 8 — Validate the deployed candidate
+
+The pipeline's test runner sends internal synthetic requests directly to the isolated candidate endpoint, without switching the stable Champion or Challenger Service. It checks the deployed image/model identity and runs prediction and feature-service integration checks against the target environment. For reference-score comparisons, use controlled test records with known feature values; changing live customer data is not a repeatable golden test.
 
 Verify:
 
@@ -464,8 +485,11 @@ Verify:
 - expected model version is loaded;
 - downloaded model identity and checksums match the candidate configuration;
 - expected inference-code version is running;
-- sample predictions pass;
+- prediction API and reference-output checks pass;
+- required feature services are reachable and return the fields/types required by the model;
 - required capacity is available.
+
+Save these results alongside the step 4 report. A failed check, timeout, or required feature missing from the target environment prevents activation.
 
 If all checks pass, the candidate is technically ready. The backend rechecks the original approval and captured inputs, then automatically continues to activation:
 
@@ -708,7 +732,7 @@ Verify the new assignment before removing previous capacity.
 | User changes draft to `3.6` | Draft changes only | `3.4` |
 | User selects No, cancels, or does nothing | No background release processing starts | `3.4` |
 | User explicitly confirms Deploy & release = Yes for `3.6` | Approval is recorded; only `3.6` starts preparation | `3.4` |
-| Pipeline builds or reuses the runtime image, tests it with model `3.6`, and deploys the candidate | FastAPI downloads `3.6` from S3; isolated candidate is checked automatically | `3.4` |
+| Pipeline builds or reuses the runtime image, tests it with model `3.6`, and deploys the candidate | Startup script downloads and verifies `3.6`; FastAPI loads it locally; isolated candidate is checked automatically | `3.4` |
 | All checks pass and approval is still valid | Automation switches the Challenger Service; no second approval | `3.6` |
 
 This example shows the main behavior:
@@ -721,15 +745,16 @@ This example shows the main behavior:
 
 | Component | Responsibility |
 |---|---|
-| DS publisher / S3 | Store immutable model artifacts, metadata, checksums, and validation samples |
-| Inference-code owner | Maintain versioned inference/feature logic and define model-code compatibility |
+| DS publisher / S3 | Store immutable model artifacts, metadata, checksums, and golden samples with fixed inputs and reference outputs; agree numeric tolerances with the inference-code owner |
+| Inference-code owner | Maintain versioned inference/feature logic, compatibility mapping, and API/feature-contract tests; agree reference cases and tolerances with DS |
 | Model UI / backend | Manage drafts, enforce upfront Yes, capture approved inputs, track operations, automate activation, and audit |
 | Jenkins | Run only after approval: validate separate model artifacts, build/reuse runtime image, test the pairing, push new images to ECR, and write candidate configuration |
 | ECR | Store immutable tested runtime images containing inference code and dependencies only |
 | Git / Helm | Store runtime image digests, S3 model references/checksums, candidate configuration, and active role assignments |
 | Argo CD | Reconcile Git state into Kubernetes |
 | Kubernetes | Run candidate/released Deployments and stable role Services |
-| FastAPI | Download the configured S3 model with retries, verify identity/checksums, load it, and provide readiness/prediction endpoints |
+| Container startup script | Download the configured S3 model with retries, verify identity/checksums, and start the API server only after successful preparation |
+| FastAPI application | Load the verified local model in its lifespan hook and provide readiness/prediction endpoints |
 | Generic Router | Control Champion/Challenger traffic distribution |
 | Prometheus / Grafana | Monitor health, errors, latency, routing, and model identity |
 
@@ -753,8 +778,9 @@ The new design requires:
 - model-to-inference-code mapping;
 - serving release definition pairing a runtime image digest with an immutable S3 model and configuration;
 - runtime-only image build/reuse with model artifacts excluded from the build context and image layers;
-- FastAPI startup verification of the configured S3 model's identity and checksums using the existing download/retry flow;
-- model/runtime compatibility and prediction tests for each new pairing;
+- container startup script reusing the existing S3 download/retry logic, verifying model identity/checksums, and starting the API server only on success;
+- FastAPI lifespan initialization that loads the verified local model;
+- versioned golden samples and a Jenkins test runner that checks each model/runtime pairing through the prediction API, compares reference outputs, and saves a release validation report;
 - model catalog and draft-selection behavior;
 - one **Deploy & release** UI/backend action with explicit Yes before any release processing;
 - backend approval enforcement and automatic activation after successful checks;
@@ -783,7 +809,7 @@ The first implementation should use one NCM candidate and prove the complete lif
 8. Jenkins verifies the separate S3 artifacts and builds or reuses the compatible runtime image; no model files enter the image.
 9. Jenkins tests the runtime with the selected S3 model, then pushes a new image or records the existing ECR digest.
 10. Jenkins writes the runtime digest, exact S3 model location/checksums, and candidate configuration to Git.
-11. Argo CD deploys the candidate; FastAPI downloads, verifies, and loads the configured S3 model.
+11. Argo CD deploys the candidate; the container startup script downloads and verifies the configured S3 model, then FastAPI loads it locally through its lifespan hook.
 12. Automated readiness and prediction checks pass.
 13. The backend rechecks the original approval and automatically updates the role assignment in Git.
 14. Argo CD updates the stable Service.
@@ -805,8 +831,8 @@ The first implementation is complete when:
 3. No, cancel, and no answer leave the current release unchanged and enqueue nothing.
 4. Jenkins uses the exact model, code commit, dependencies, and build definition.
 5. The ECR image contains only prediction runtime, inference code, and dependencies. Model artifacts, model metadata, and golden samples are absent from its build context and image layers.
-6. Candidate startup downloads the exact model from its configured immutable S3 location with retries and verifies model identity/checksums before loading. New or restarted Pods have the required S3 read access.
-7. Failed downloads, missing or invalid files, identity/checksum mismatches, or model-load failures keep readiness false and prevent activation.
+6. The container startup script downloads the exact model from its configured immutable S3 location with retries and verifies model identity/checksums before starting the API server. The FastAPI application's lifespan hook loads the verified local model without downloading artifacts. New or restarted Pods have the required S3 read access.
+7. Failed downloads, missing or invalid files, or identity/checksum mismatches prevent the API server from starting. Model-load failures prevent application startup. All keep the Pod unready and prevent activation.
 8. A candidate can be created even when no Deployment for that model version already exists.
 9. Only explicit **Yes** starts processing; direct backend calls and retries cannot bypass approval.
 10. Approval defaults to **No** and is bound to the exact reviewed model, code, environment, role, and draft revision.
@@ -817,6 +843,7 @@ The first implementation is complete when:
 15. Rollback uses the previous tested runtime image digest, exact S3 model location/checksums, and saved configuration. Referenced images and S3 artifacts remain available for active releases and rollback retention.
 16. Draft edits cannot replace approved inputs; duplicate or stale operations cannot activate an unintended release.
 17. Approval is required before processing even when an image already exists or the role has 0% traffic.
+18. Each model/runtime pairing has a passing report tied to the exact image, model checksums, golden sample, and test-suite revision. Required prediction, contract, startup, and failure checks pass before candidate deployment; deployed prediction and feature-service checks pass before activation.
 
 ---
 
@@ -839,7 +866,9 @@ New runtime image is pushed to ECR, or existing digest is reused
         ↓
 Git records runtime digest + S3 model configuration; Argo CD deploys candidate
         ↓
-FastAPI downloads, verifies, and loads the configured S3 model
+Container startup script downloads and verifies the configured S3 model
+        ↓
+FastAPI lifespan loads the verified local model
         ↓
 Candidate passes automated validation
         ↓
