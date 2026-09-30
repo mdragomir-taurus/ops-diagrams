@@ -1,914 +1,290 @@
 # NCM MLOps Implementation Plan
 
-## 1. Goal
+## 1. Release Flow at a Glance
 
-The NCM deployment flow starts when the Data Science team uploads a completed model to S3.
+The platform turns a published NCM model into a tested, running prediction service. Data Science (DS) publishes the model; an authorized user selects and approves it; automation prepares, tests, deploys, and activates the release. Model training is outside this plan.
 
-Uploading a model does **not** automatically build, deploy, or release it. The upload only makes the model available for selection.
-
-The Board member or authorized delegate must explicitly approve the selected version in the UI **before any release processing starts**. In this plan, "user" means that authorized decision-maker.
-
-The intended user flow is:
-
-```text
-Select model version
-    |
-    v
-Confirm Deploy & release = Yes
-    |
-    v
-Automatically build or reuse the runtime image, test, and deploy the approved version
-    |
-    v
-Automatically validate and activate it after all checks pass
-```
-
-**No, cancel, or no answer means no release job starts.** Selection only saves a draft. There is no build, artifact download, validation job, deployment, or other background release work before explicit **Yes**.
-
-That single approval authorizes the complete operation. There is no second approval after deployment. Existing production services and monitoring continue running throughout.
-
-Model training is outside the scope of this plan.
-
-The Docker image must contain only the prediction runtime, inference code, and required dependencies. Model artifacts remain separate in S3 and must not be included in the image.
-
-Each serving release pairs an exact runtime image digest with an immutable S3 model location, artifact checksums, and deployment configuration. A container startup script downloads and verifies the selected model before starting the API server. The FastAPI application's lifespan hook then loads the verified local model before the Pod becomes Ready.
-
-The MLOps platform should automate the technical steps. Users should trigger the process through the UI rather than asking engineers to manually update deployment files for each release.
-
----
-
-## 2. Main Principles
-
-### 2.1 Put explicit approval before all release processing
-
-Selection is a draft action. Runtime image build or reuse, deployment, validation, and activation are automated stages of one approved operation.
-
-The approval flow below shows what happens when the user responds to the **Deploy & release** confirmation or leaves it unanswered:
+**Uploading a model or saving a draft starts no release work. Only an explicit `Deploy & release = Yes` starts processing.** That single approval covers activation after successful checks; there is no second human approval.
 
 ```mermaid
 flowchart TD
-    Draft["Select model and role; save draft"] --> Confirm{"Deploy & release?"}
-    Confirm -->|"Yes"| Approved["Record exact approval; start automated release pipeline"]
-    Confirm -->|"No"| Declined["Release declined"]
-    Confirm -->|"Cancel / close dialog"| Dismissed["Confirmation dismissed"]
-    Confirm -->|"No response"| Pending["Approval remains pending"]
-    Declined --> Hold["Keep draft and current release; start no release work"]
-    Dismissed --> Hold
-    Pending --> Hold
+    Publish["DS publishes model to S3 and registers catalog metadata"] --> Draft["User selects model and role; saves draft"]
+    Draft --> Confirm{"Deploy & release?"}
+    Confirm -->|"No"| Hold["Keep draft and current release; start no release work"]
+    Confirm -->|"Cancel / close dialog"| Hold
+    Confirm -->|"No answer"| Hold
+    Confirm -->|"Yes"| Release["Prepare, test, deploy, and validate using section 4"]
+    Release --> Checks{"Tests pass and approval remains valid?"}
+    Checks -->|"No"| Stop["Stop before activation; keep current role assignment"]
+    Checks -->|"Yes"| Activate["Activate and verify the approved release"]
+    Activate --> Serve["Serve through the stable role endpoint with existing routing settings"]
 ```
 
-**No response** means the user has not answered the confirmation; waiting never counts as approval. The user can return to the draft and explicitly approve it later. Canceling here means dismissing the confirmation before Yes; canceling an operation already started after Yes is covered in section 7. Section 3 shows the automated pipeline that follows Yes.
+The main design decisions are:
 
-| Action | Trigger | Result | Can it receive application traffic? |
-|---|---|---|---|
-| Publish | DS completes the S3 upload | Model is available to list in the catalog; no release job | No |
-| Select / save draft | User chooses a model version and role | Draft selection is saved; no release job | No |
-| Leave release unapproved | User chooses No, cancels/closes the dialog, or gives no response | Remain in draft; no release work starts | No |
-| Approve | User confirms **Deploy & release = Yes** | Backend records the exact approved request and starts the pipeline | No |
-| Prepare, deploy, and validate | Approved pipeline runs automatically | Jenkins runs the selected image with the selected model and compares prediction API outputs with fixed reference results; an isolated candidate is then deployed and checked (section 5, steps 4 and 8) | No |
-| Activate | Candidate passes all checks and the approval is still valid | Automation switches the selected role Service | Yes, according to existing routing settings |
-| Set routing policy | User changes live percentages or the shadow ON/OFF control | Router applies the selected live distribution and shadow execution state | Only released models receive traffic |
+- A serving release pairs an exact runtime image digest with an immutable S3 model and configuration.
+- A container startup script downloads and verifies the model. FastAPI loads the verified local files.
+- Git holds deployment configuration. Argo CD applies it; Kubernetes runs the Pods.
+- Candidates receive internal synthetic validation requests until activation. Live and shadow application traffic use released models only.
+- Model release, live traffic percentages, and shadow ON/OFF are separate controls.
 
-Changing the draft selection must not start Jenkins, download model artifacts, run validation jobs, build images, write deployment changes to Git, or create Kubernetes resources.
+Use [section 4](#4-github-actions-release-workflow) for the complete workflow, tools, inputs, outputs, and tests. Use [section 5](#5-live-routing-and-shadow-execution) for traffic and shadow controls.
 
-For example, if the user selects `3.5`, then changes the draft to `3.6`, neither version is prepared until the user explicitly approves **Yes** for `3.6`.
+## 2. Publication, Approval, and UI State
 
-For example, the **Deploy & release** confirmation asks: "Deploy and release Challenger 3.6 in this environment?" The responses follow the approval flow above.
+### Publish and select
 
-Approval defaults to **No** and must never be inherited by a different model, code revision, environment, or role. There must be no separate button that starts preparation before this approval.
+After the complete S3 upload succeeds, the DS publishing script registers catalog metadata: model family/version, publication ID, immutable artifact location, checksums, and the compatible inference-code/build mapping. Include an existing runtime image digest when available.
 
----
+An incomplete mapping may be displayed in the catalog, but release approval stays blocked until the mapping is available. Catalog listing and draft selection use metadata only: they do not download artifacts, validate models, build images, change deployment Git, or create Kubernetes resources.
 
-### 2.2 Keep the runtime image and model artifacts separate
+For example, if the current Challenger is `3.4`, selecting `3.5` and then `3.6` only changes the draft. The current Challenger stays `3.4` until the approved `3.6` release completes.
 
-The current runtime downloads the model from S3 when FastAPI starts. In the target design, separate artifact preparation from application initialization.
+### Confirm the exact release
 
-For the initial implementation, move the existing download/retry logic into a container startup script (entrypoint). It retrieves and verifies the approved artifacts, then starts the API server only after preparation succeeds. Defer `initContainer`; the entrypoint provides this separation without adding another container.
+The Board member or authorized delegate reviews the environment, role, model/artifact identity, inference-code revision, current release, live percentages, and observed shadow state and target. The confirmation explains that the new release will inherit the role's existing live traffic and, for Challenger, any enabled shadow traffic.
 
-FastAPI supports application initialization through its [lifespan hook](https://fastapi.tiangolo.com/advanced/events/), including loading a model into memory. Downloading artifacts there is technically possible, but it is not required by FastAPI. This plan assigns S3 retrieval, retries, and artifact verification to the startup script; the application loads the prepared local model and serves predictions. This also avoids repeating downloads for each API worker's lifespan initialization.
+Approval defaults to **No**. No, cancel, closing the dialog, or no response leaves the draft unapproved. Waiting never counts as approval. An existing image, a role with 0% live traffic, or an approval for another revision does not bypass this requirement.
 
-Store the runtime and model separately:
+After Yes, the backend records the exact approved inputs and creates an operation ID. Later draft edits cannot change that operation. The backend enforces approval for API calls and retries as well as UI actions; the execution safeguards are defined in section 4.
+
+### Show progress
+
+Keep the current release, draft, approved target/serving-release ID, and operation status visible separately.
+
+| State | Meaning |
+|---|---|
+| Published | Complete publication metadata is available in the catalog. |
+| Draft / awaiting approval | A selection is saved; no release processing has started. |
+| Approved / queued | Yes is recorded for the exact inputs. |
+| Preparing | Image preparation, model/runtime tests, and candidate deployment are running. |
+| Validating | Checks are running against the deployed candidate. |
+| Activating | The role assignment is being applied and verified. |
+| Released | The observed role endpoint serves the approved release. |
+| Failed | Show the failed stage, reason, operation ID, and retry option. |
+
+## 3. Model, Runtime, and Serving Identity
+
+### Keep artifacts separate
 
 | Location | Contents |
 |---|---|
-| Docker image / ECR | FastAPI prediction runtime, inference code, and locked dependencies |
-| S3 | Model artifact, model metadata, and golden sample |
-| Release configuration / Git | Runtime image digest, exact S3 model location, artifact checksums, feature contract, and serving release identity |
+| ECR runtime image | FastAPI, inference code, and locked dependencies. Model files, metadata, and golden samples are excluded from the build context and every image layer. |
+| S3 | Immutable model files, metadata, checksums, and golden samples with reference inputs/outputs. |
+| Deployment Git | Image digest, exact S3 references/checksums, inference configuration, candidate definitions, and active role assignments. |
+| Backend | Catalog metadata, drafts, approvals, operation status, and references to release reports and Git revisions. |
 
-Do not copy model files, model metadata, or golden samples into the Docker build context or image layers. Jenkins may download them separately for validation after approval.
-
-Compatibility still needs to be checked because a new model may require changes in:
-
-- feature retrieval;
-- preprocessing;
-- feature ordering;
-- prediction logic;
-- dependency versions.
-
-A model version by itself does not fully describe the serving behavior.
-
-The model and inference code must therefore be recorded and tested as one serving release while remaining separate artifacts. The release definition binds the selected S3 model to a compatible runtime image.
-
-| Area | Current approach | Target approach |
-|---|---|---|
-| ECR image | Prediction runtime only | Prediction runtime + inference code + locked dependencies; no model artifacts |
-| Model retrieval | Runtime downloads from S3 during FastAPI startup | Container startup script downloads with retries from the approved immutable S3 location and verifies identity/checksums before starting the API server |
-| FastAPI startup | Download, retry, then load | Application lifespan hook loads the verified local model before Ready |
-| Rollback unit | Runtime + model configuration | Previous tested runtime image digest + exact S3 model identity/checksums + recorded configuration |
-
-S3 remains the source of model artifacts for validation and runtime startup. Retain the exact files for every active release and for the rollback retention period.
-
-Example:
+Example publication:
 
 ```text
-s3://fcp-model-artifacts/serving/new_customers/2.5.0/
+s3://<model-artifacts-bucket>/serving/new_customers/3.6/
   model.cbm
   model_meta.json
   golden_sample.json
 ```
 
-Each serving release must record the exact model/code combination.
+A serving release such as `ncm-3-6-r1` binds the model version and immutable S3 references/checksums to an exact inference-code commit, locked dependencies, pinned base image/build definition, feature contract, runtime image digest, and deployment configuration.
 
-Example:
+A model or code change creates a new serving release; existing releases are never overwritten. A model-only change may reuse an image built from the same compatible runtime inputs, but the new model/image pair must pass its own tests. Changes to runtime build inputs require a new image. Test and deploy the same ECR digest, such as `<ecr>/ncm-runtime@sha256:<digest>`.
 
-```text
-Serving release: ncm-3-5-r1
+### Prepare the model before starting FastAPI
 
-Model version: 3.5
-Model location: immutable S3 path
-Artifact checksums: recorded
+For the first implementation, move the existing download/retry logic into the container entrypoint. An `initContainer` can be considered later.
 
-Inference code: <exact-git-commit>
-Dependencies: locked
-Base image: pinned
-Feature contract: recorded
+1. The entrypoint receives the release ID, model version, exact S3 location, and expected checksums from deployment configuration.
+2. It downloads the model into a runtime directory such as `/opt/ncm/model/`, retries as configured, and verifies required files, identity, and checksums.
+3. Only after verification succeeds does it start the API server. FastAPI's [lifespan hook](https://fastapi.tiangolo.com/advanced/events/) loads the verified local model before the Pod becomes Ready.
+4. The application treats the prepared files as read-only and uses that model for the Pod's lifetime. Changing the model creates a new release.
 
-Runtime image (no model files):
-<ecr>/ncm-runtime@sha256:<image-digest>
+Failed downloads or verification prevent the API server from starting; load failures prevent application startup. Neither may become Ready or substitute a different model or unverified cached copy. Every new or restarted Pod needs S3 read access through workload identity, with credentials outside the image. Existing healthy Pods continue serving while a candidate starts.
 
-Release configuration binds this image to the S3 model above.
+### Keep role endpoints stable
+
+The stable Service names represent roles, not model versions:
+
+| Role | Example endpoint |
+|---|---|
+| Champion | `http://new-customers-model.fcp-dev.svc.cluster.local` |
+| Challenger | `http://new-customers-model-challenger.fcp-dev.svc.cluster.local` |
+
+Each candidate has its own Deployment and unique serving-release labels. Activation changes the role Service selector to that release while preserving the DNS name. Use the full serving-release ID, since one model version may have multiple code revisions. Shadow calls use the released Challenger endpoint.
+
+## 4. GitHub Actions Release Workflow
+
+GitHub Actions coordinates the complete approved release. The backend owns approval and operation state; Argo CD reconciles deployment Git; Kubernetes runs the workloads. This section contains the workflow definition, execution order, testing methodology, and setup requirements.
+
+### 4.1 Workflow location, trigger, and inputs
+
+| Repository | What belongs there |
+|---|---|
+| Runtime repository | Prediction runtime, Dockerfile, tests, `compose.ncm-test.yml`, and `.github/workflows/ncm-release.yml`. |
+| Infrastructure repository | Helm charts, Kubernetes/Argo CD configuration, candidate image/model references, and active role assignments. |
+| Router repository | Live/shadow routing logic and its own build/test workflow. A model release does not require a router rebuild. |
+
+The workflow and Compose filenames are implementation targets. Put the workflow in the repository-root `.github/workflows/` directory and configure `workflow_dispatch`, with the definition present on the default branch.
+
+**Exact trigger:** after recording the user's Yes, the backend calls the [workflow dispatch API](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event) with the approved workflow ref and operation ID:
+
+```http
+POST /repos/<organization>/<runtime-repository>/actions/workflows/ncm-release.yml/dispatches
+Content-Type: application/json
+
+{
+  "ref": "<approved-workflow-branch-or-tag>",
+  "inputs": { "operation_id": "ncm-op-0042" }
+}
 ```
 
-If the model changes, create a new serving release. Reuse the compatible runtime image when its code, dependencies, pinned base image, and build configuration are unchanged; a model-only change does not require an image rebuild.
+The workflow retrieves the captured inputs from the backend and verifies approval and the workflow revision before preparation. An S3 upload does not dispatch this workflow. A direct dispatch or rerun cannot create approval or replace approved inputs.
 
-If the inference code or runtime build inputs change, create a new runtime image and serving release.
+| Captured input | Purpose |
+|---|---|
+| Environment, role, draft revision, expected current assignment | Identify the target and prevent a stale operation from replacing a newer release. |
+| Model version, immutable S3 references, checksums, feature contract, inference configuration | Identify the exact model and expected runtime behavior. |
+| Inference-code commit, dependency lock, pinned base image, build definition, existing image digest if reused | Identify compatible runtime inputs. Check out the approved code commit explicitly; it is independent of the workflow ref. |
+| Workflow, Compose, test-suite, and golden-sample revisions/checksums and agreed tolerances | Make validation repeatable. |
+| Operation ID, approver, approval time, and routing/shadow settings shown during approval | Bind execution to the reviewed request and preserve its audit history. |
 
-Example:
+Record the image digest produced by a build, workflow run ID/attempt, reports, and Git revisions as execution progresses.
 
-```text
-ncm-3-5-r1
-ncm-3-5-r2
-```
+### 4.2 Execution order: input, tool, and output
 
-Do not overwrite an existing release.
+Implement these stages as dependent jobs in one workflow. Use `needs` to require preceding success and explicit outputs/artifacts to transfer results; jobs must not assume they share local files.
 
-An image may be reused when the exact code commit, dependency set, pinned base image, and build configuration were already built and tested successfully and are compatible with the selected model. Each new model/image combination must pass compatibility and prediction checks, even when the image is reused.
+| Step | Input | Tool and action | Required output |
+|---|---|---|---|
+| 1. Verify inputs | Operation ID and captured release definition | Backend approval check; Git checkout; S3 download into a validation workspace outside the build context. Verify compatibility, required files, checksums, feature contract, and build inputs. | Verified model and runtime inputs for this operation. |
+| 2. Prepare image | Exact runtime inputs or compatible existing digest | Docker builds if needed; ECR stores the new image or supplies the existing digest. | One immutable runtime image digest used by all later stages. Publishing an image alone does not validate the release. |
+| 3. Test model/runtime pair | Image digest, approved S3 model, golden samples, and test definitions | Docker Compose starts the runtime, test dependencies, and test runner. Run the checks in section 4.3. | Passing report matching the operation and pair; a recorded serving-release identity. |
+| 4. Commit candidate | Validated release and matching report | Workflow bot updates candidate configuration in the infrastructure repository. | **Commit 1:** image digest, model references/checksums, release ID, and configuration. Active role assignments stay unchanged. |
+| 5. Deploy candidate | Candidate commit on the branch/path tracked by Argo CD | Argo CD applies Helm-rendered resources; Kubernetes creates candidate Pods using the startup sequence in section 3. The workflow waits for the recorded revision and readiness. | Ready candidate isolated from live and shadow application traffic. |
+| 6. Validate candidate | Candidate endpoint and expected release identity | Workflow starts a Kubernetes validation Job for identity, prediction, feature-service integration, and capacity checks. | Successful Job and matching deployed-candidate report. |
+| 7. Activate | Both passing reports and the original approval | Backend rechecks approval, captured inputs, current run/attempt, candidate health, and expected role assignment. The bot then commits the assignment; Argo CD applies it. | **Commit 2:** stable role Service selects the approved release. Routing settings are preserved. |
+| 8. Verify release | Assignment revision and expected serving identity | Workflow waits for reconciliation and checks the actual Service selector, Ready backend Pods, and serving-release identity. | Backend marks **Released** only when observed state matches the approved assignment. |
 
-Kubernetes should deploy the image by digest rather than by a mutable tag.
+**Pod creation:** In the default path, step 3 uses Docker containers on the Actions runner. Candidate application Pods are first created in step 5, after tests pass and Argo CD applies commit 1. The validation Job creates test Pods in step 6.
 
-Deployment configuration supplies the serving release ID, exact model version, S3 bucket/key or immutable prefix, and expected artifact checksums. The container startup script downloads the selected files into a runtime directory such as:
+A failed prerequisite stops dependent release stages. Missing, failed, canceled, timed-out, or mismatched validation results block the next gate. Cleanup and diagnostic jobs may still run. Failure before activation preserves the current role assignment; partial activation is handled in section 6.
 
-```text
-/opt/ncm/model/model.cbm
-```
+### 4.3 Testing methodology
 
-This directory is populated at container startup and is not part of the Docker image. The startup script verifies required files, model identity, and checksums before starting the API server. It must complete before API workers start, and the application must treat the prepared files as read-only. The application's lifespan hook loads the model from this directory. Use the configured model for the Pod's lifetime; changing models creates a new candidate release.
+**Before deployment: Docker Compose tests.** Create a separate disposable Compose project for each operation/attempt, with its own network, storage, runtime, test dependencies, and test runner. This makes feature data repeatable and contains startup/failure tests away from serving workloads. The environment exists for the test run and requires no permanent testing cluster.
 
-If download retries are exhausted, files are missing, or identity or checksum verification fails, the startup script exits with an error without starting the API server. If the model cannot be loaded, application startup fails. In either case, the Pod must not become Ready. Do not substitute another model or an unverified cached copy.
+Start the exact ECR image through its normal entrypoint with the approved S3 configuration. Wait for service health within a configured timeout. The test runner sends prediction API requests and runs the relevant Python, Go, or .NET tests.
 
-Each new or restarted Pod needs S3 read access to its configured artifact location. Provide access through the deployment's workload identity; keep credentials outside the image. Existing healthy Pods continue serving their loaded model while a candidate downloads and validates its model.
+DS supplies `golden_sample.json`: fixed requests, required feature values, and expected outputs from the reference inference implementation. DS and the inference-code owner agree the feature contract and numerical tolerances before testing. Version and checksum these inputs; do not derive expected results from the runtime under test. Controlled feature-service fixtures return the sample's fixed values while exercising the runtime's feature client and inference path.
 
----
+| Check | Method and pass condition |
+|---|---|
+| Startup and identity | Start with a clean model directory. Exercise S3 download/verification and local loading. Readiness succeeds within the timeout with the approved model identity and checksums. |
+| Prediction correctness | Send every golden request through preprocessing, feature ordering, inference, and response serialization. Categorical results match exactly; numeric results are finite and within the recorded tolerance. HTTP success alone is insufficient. |
+| Feature/API contracts | Check feature names, types, ordering, missing-value handling, response fields, and status codes for valid and invalid requests against model and router expectations. |
+| Startup failures | In disposable instances, inject download failures, missing/corrupt files, checksum mismatches, and load errors. Verify retries and failure behavior: no invalid/substitute model serves predictions or becomes Ready. Do not alter approved S3 artifacts. |
+| Image contents | Inspect the image and its layers separately from downloaded container files; verify build-context exclusions. Model artifacts, metadata, and golden samples must be absent. |
 
-### 2.3 Use Git as the deployment source of truth
+For example, with reference score `0.8123` and absolute tolerance `0.0001`, require `abs(actual_score - 0.8123) <= 0.0001`. These values are illustrative; DS and the inference-code owner set the actual tolerance.
 
-Git should store the desired deployment state.
+**After deployment: Kubernetes validation.** The Job sends internal synthetic requests directly to the candidate, leaving stable role Services unchanged. Check Ready Pods, exact image/model/code identity and checksums, reference predictions, required capacity, and connectivity/field compatibility with the environment's actual feature services. Reference comparisons use controlled test records with known feature values; changing customer data cannot provide repeatable expected scores.
 
-This includes:
+**Reports and cleanup.** Both test stages save reports tied to the operation, current run/attempt, release/image/model identity, golden-sample checksum, code/validation revisions, and tolerances. Include per-case expected/actual results and diagnostic logs, keeping credentials out. Each next stage checks successful execution and a matching report before proceeding. Reusing an image does not reuse a different model's test result.
 
-- candidate serving releases;
-- ECR runtime image digests;
-- exact S3 model locations, versions, and artifact checksums;
-- inference configuration;
-- active Champion and Challenger assignments.
+Collect logs/reports and clean up disposable resources after success, failure, or cancellation. Download required artifacts in each job or transfer them explicitly; keep all model files outside the image build context.
 
-Draft selections should be stored separately in the UI/backend database.
+**Optional cluster testing:** if the initial tests require cluster-only dependencies, run the same test runner as a Kubernetes Job beside a temporary runtime Deployment and dependencies. Use a namespace per operation with network restrictions and resource limits; a namespace alone does not isolate traffic. These temporary test Pods are separate from the candidate in step 5. The inputs, checks, reports, and release gates stay the same.
 
-Selecting a draft must not change Git or trigger Argo CD.
+### 4.4 Automation setup and execution safeguards
 
-| User action | Git change | Argo CD result |
-|---|---|---|
-| Select / save draft | None | No deployment change |
-| No / cancel / no answer | None | No deployment change |
-| Yes, then runtime image build/reuse and model/runtime tests pass | Pipeline writes candidate release to Git | Candidate Deployment is created |
-| Same approved operation passes deployed-candidate checks | Pipeline updates active role assignment in Git | Role Service switches to the approved candidate |
+Configure these once so normal releases need no manual YAML edits:
 
-One approved operation produces two automated Git changes:
+- **Runner access:** provide Docker Compose and adequate resources; use AWS OIDC for the required S3/ECR access. Jobs that contact Kubernetes need scoped permissions and network access, using a runner in the private network when required. Runtime Pods need their own S3 workload identity.
+- **Bot identity:** give the backend a GitHub App identity for dispatch, and the workflow suitably scoped installation credentials for infrastructure writes. The default [`GITHUB_TOKEN`](https://docs.github.com/en/actions/concepts/security/github_token) is limited to its own repository. The workflow bot creates both commits; users do not create them manually.
+- **Git and Argo CD:** update only the selected release/environment configuration, preserve unrelated concurrent changes, and record candidate/assignment commit or merge SHAs. Wait for each revision to reach the tracked branch/path and reconcile with automatic sync configured. If policy requires pull requests, create them and wait for merge; mandatory human review adds a separately documented manual gate. Respect required checks and branch protections.
+- **One current operation:** backend locks/deduplication and workflow concurrency serialize releases for the same environment and role through activation verification. Duplicate requests return the same operation. Track the authorized run/attempt; stale, canceled, or superseded runs cannot write deployment changes. Retries recognize existing commits and retain captured inputs. Changed model/code/environment/role requires a new Yes.
+- **Final authorization and audit:** the backend's activation recheck enforces the original approval, not a second human confirmation. Record actor, approved target and previous release, timestamps, workflow run/attempt, bot identity, both Git revisions, reports, reconciliation results, and observed serving state. Dispatch success alone is not release success.
 
-```text
-Deploy & release = Yes
-    ↓
-Jenkins
-    ↓
-Candidate Git commit
-    ↓
-Argo CD
-    ↓
-Candidate Deployment
-    ↓
-Candidate validation passes
-    ↓
-Assignment Git commit (automatic under the same approval)
-    ↓
-Argo CD
-    ↓
-Role Service update
-```
+## 5. Live Routing and Shadow Execution
 
-These Git changes should be automated.
-
-Git holds Helm values and templates; Helm renders Kubernetes manifests, and Argo CD reconciles them into Kubernetes. A YAML file's role depends on its location and contents: values configure the chart, templates generate resources, and rendered manifests describe Deployments and Services.
-
-The MLOps engineer should configure the pipeline, repository permissions, Helm templates, and Argo CD integration once. Normal releases should not require manual YAML edits.
-
-If repository policy requires a human review of each generated commit, that is an additional manual gate and must be documented separately; it is not assumed in this target flow.
-
----
-
-### 2.4 Keep Champion and Challenger endpoints stable
-
-The existing Kubernetes Service names should remain unchanged.
-
-Example:
-
-```text
-http://new-customers-model.fcp-dev.svc.cluster.local
-http://new-customers-model-challenger.fcp-dev.svc.cluster.local
-```
-
-These DNS names represent roles:
-
-```text
-new-customers-model             = Champion
-new-customers-model-challenger  = Challenger
-```
-
-They do not represent a specific model version.
-
-For the initial implementation, shadow calls also use the stable Challenger endpoint. The shadow version is therefore the released Challenger version; section 8 explains version selection and the independent execution switch.
-
-A candidate release should have its own Deployment and release labels.
-
-Before approval, no candidate is prepared. After approval, the current Champion and Challenger Services continue to point to the currently released versions while the candidate is prepared, deployed, and checked.
-
-The candidate may receive internal synthetic validation requests, but it must not receive normal application traffic.
-
-After all candidate checks pass, automation updates the Service selector under the original approval. Selectors should use a unique serving-release ID, because a model version can have several inference-code revisions.
-
-Example:
-
-```text
-Before release
-
-new-customers-model-challenger
-        |
-        +--> serving-release=ncm-3-4-r1
-```
-
-```text
-After release
-
-new-customers-model-challenger
-        |
-        +--> serving-release=ncm-3-6-r1
-```
-
-The DNS name stays the same. Only the selected backend changes.
-
----
-
-## 3. End-to-End Flow
-
-```mermaid
-flowchart TD
-    S3["DS uploads model to S3"] --> Catalog["Publication metadata available in catalog"]
-    Catalog --> Draft["User selects model as draft"]
-    Draft --> Approve{"Deploy and release: explicit Yes?"}
-    Approve -->|"No / cancel / no answer"| Hold["Keep draft and current release; start no release work"]
-    Approve -->|"Yes"| Snapshot["Record approval and exact inputs"]
-    Snapshot --> Jenkins["Jenkins validates exact model and runtime mapping"]
-    Jenkins --> Image["Build or reuse runtime image; keep model separate"]
-    Image --> Test["Test runtime with selected S3 model"]
-    Test --> ECR["Push new runtime image or record existing ECR digest"]
-    ECR --> Git["Write runtime digest and S3 model configuration to Git"]
-    Git --> Deploy["Argo CD deploys candidate"]
-    Deploy --> Prepare["Container startup script downloads and verifies S3 model"]
-    Prepare --> Load["FastAPI lifespan loads verified local model"]
-    Load --> Validate["Run readiness and prediction checks"]
-    Validate --> Checks{"All checks pass; approval still valid?"}
-    Checks -->|"Yes: automatic"| Assign["Update active role assignment in Git"]
-    Checks -->|"No"| Stop["Stop; keep current role assignment"]
-    Assign --> Live["Stable role Service points to new release"]
-    Live --> Router["Generic Router applies live percentages and shadow ON/OFF state"]
-    Traffic["User sets live percentages and shadow execution in routing UI"] -.-> Router
-```
-
-Any build or deployment failure also stops the operation before activation.
-
-> **No explicit Yes means no release processing. Yes starts the full automated operation; successful checks allow activation without another approval.**
-
----
-
-## 4. Publish and Select a Draft
-
-After the DS upload is complete, the publication metadata can be listed in the catalog. The DS publishing script may register that metadata as part of publishing. This does not enqueue a release job.
-
-The catalog entry should include:
-
-- model family;
-- model version;
-- S3 location;
-- artifact checksums;
-- publication ID;
-- compatible inference-code/build mapping and existing runtime image digest, when available.
-
-If the inference-code mapping is missing, the model may appear in the catalog but must be marked incomplete.
-
-**Deploy & release = Yes** must remain blocked until the mapping is available. Catalog display and draft persistence use metadata; they must not trigger artifact downloads or background preparation. Full compatibility and artifact verification happen only after approval.
-
-Publishing a model must not:
-
-- start Jenkins;
-- download artifacts or run background validation;
-- build an image;
-- update deployment configuration;
-- create Kubernetes resources;
-- change the current release.
-
-The UI should show the current released version separately from the draft.
-
-Example:
-
-```text
-Current Challenger: 3.4
-Draft Challenger:   3.5
-```
-
-If the user changes the draft to `3.6`, production remains on `3.4`.
-
-Only the exact version and code combination captured when **Yes** is confirmed may be prepared.
-
----
-
-## 5. Automated Execution After Yes
-
-Only after the user confirms **Deploy & release = Yes**, the backend records the approval, creates a tracked operation, and enqueues Jenkins. There is no upload-triggered, draft-triggered, or speculative preparation pipeline.
-
-The operation should record:
-
-- environment;
-- selected role;
-- model version;
-- artifact location;
-- artifact checksums;
-- inference-code Git commit;
-- build definition revision;
-- dependency lock and pinned base image;
-- existing runtime image digest, if reused; otherwise record the resulting digest after the build;
-- draft revision;
-- operation ID;
-- approver and approval timestamp;
-- current role assignment and routing settings shown during approval.
-
-The backend must enforce this gate for every start/retry API, not only in the UI. Duplicate clicks must return the same operation rather than start duplicate builds. A changed draft cannot replace an operation's captured inputs; a different target requires a new explicit Yes. Serialize operations for the same environment and role, and recheck the expected active assignment before switching it.
-
-The approved pipeline then runs the following steps.
-
-### Step 1 — Validate the release definition
-
-Verify:
-
-- model/code compatibility mapping;
-- immutable artifact path;
-- checksums;
-- existing runtime image identity and compatibility, if reused;
-- feature contract;
-- dependency definition;
-- build configuration.
-
-If validation fails, stop the operation.
-
-The currently released Champion and Challenger must remain unchanged.
-
-### Step 2 — Fetch exact inputs
-
-Jenkins:
-
-- resolves the exact inference-code commit and build inputs, checking out the code if an image build is needed;
-- downloads the exact model files from S3 into a separate validation workspace outside the Docker build context;
-- verifies required files, model metadata, and checksums.
-
-Retries must use the same captured inputs.
-
-The pipeline must not silently replace the requested model, branch, dependency version, or base image with a newer one.
-
-### Step 3 — Build or reuse the runtime image
-
-The image must contain only:
-
-- FastAPI prediction runtime;
-- inference code;
-- locked dependencies.
-
-Keep model artifacts, model metadata, and golden samples in S3, outside the build context and all image layers. Supply model selection and serving release identity through deployment configuration.
-
-If a compatible tested image already exists for the exact runtime build inputs, reuse its digest. A model-only change creates a new serving release without rebuilding that image.
-
-### Step 4 — Test the runtime with the selected model
-
-The **model/runtime pair** is the exact model artifact plus the exact runtime image containing the inference code and dependencies. Jenkins tests them together by starting that image in an isolated test environment and sending requests to its prediction API.
-
-**Test inputs.** DS publishes `golden_sample.json` with the model: fixed prediction requests, any feature values needed to reproduce them, and expected prediction outputs. DS and the inference-code owner define the expected feature contract and numeric tolerances before release testing. The sample and tolerances must be versioned and covered by the release's artifact checksums. Expected results come from the reference inference implementation; the pipeline must not generate its expectations from the runtime under test. Keep these files in the separate validation workspace, outside the image.
-
-**Execution.** Jenkins starts the image through its normal container startup script with the approved S3 location, checksums, and inference configuration. For a new build, test the exact local image ID and push that same image in step 5 without rebuilding it. For a reused image, pull and test its recorded ECR digest. A separate test runner calls the running API and performs these checks:
-
-| Check | How it is tested | Pass condition |
-|---|---|---|
-| Startup and model identity | Start with a clean model directory, exercise S3 download and verification, and wait for readiness within a configured timeout. Compare the loaded model identity and verified checksums with the approved release. | The startup script verifies the exact artifacts; FastAPI loads the local model; readiness succeeds with the expected identity. |
-| Prediction correctness | Send every golden request through the real API, preprocessing, feature ordering, model inference, and response serialization. Compare each output with its stored reference result. | Every required case passes: categorical outputs match exactly; numeric outputs are finite and within the recorded tolerance. A successful HTTP response alone is insufficient. |
-| Feature and API contracts | Check feature names, types, ordering, and missing-value behavior against the model contract. Exercise valid and invalid requests and check response fields, types, and status codes against Generic Router expectations. | All contract checks pass, including documented handling of invalid or missing inputs. |
-| Failure handling | In disposable test instances, inject download failures, missing/corrupt files, checksum mismatches, and model-load errors. Verify retry behavior and startup failure after retries are exhausted. | No instance serves predictions with an invalid or substitute model; unsuccessful initialization never becomes ready. Fault injection does not modify the approved S3 artifacts. |
-| Image contents | Inspect the built image and its layers separately from the running container's downloaded files. | Model artifacts, model metadata, and golden samples are absent from the image and its build context. |
-
-For repeatable golden tests, configure test feature services to return the fixed feature values from the sample. This exercises the runtime's feature client and inference path while keeping input data stable. The deployed-candidate checks in step 8 also verify connectivity and compatibility with the target environment's actual feature services.
-
-For example, if a reference score is `0.8123` and its recorded absolute tolerance is `0.0001`, the test passes only when `abs(actual_score - 0.8123) <= 0.0001`. These numbers are illustrative; DS and the inference-code owner set tolerances appropriate to the model.
-
-**Result and release gate.** Jenkins saves a report containing the tested image identity, model location/checksums, golden-sample checksum, inference-code and test-suite revisions, tolerances, per-case expected/actual results, and failure logs. Link the report to the operation and serving release; record the ECR digest from step 5 against the same tested image. Missing reference data, readiness timeout, or any failed required check stops the pipeline before candidate deployment. Reusing an image does not reuse another model's test result.
-
-### Step 5 — Record the runtime image in ECR and the serving release
-
-For a new build, push the tested runtime image to ECR. For a reused image, retain its existing digest. Record the serving release separately:
-
-- runtime image digest;
-- model version;
-- immutable S3 artifact location and checksums;
-- inference-code commit;
-- build inputs;
-- build/reuse result and model/runtime validation result;
-- operation ID.
-
-One runtime image may support several model versions. Each model/image pairing has its own serving release identity and validation record.
-
-### Step 6 — Write candidate configuration to Git
-
-Jenkins writes the candidate release to Git: runtime image digest, serving release ID, exact S3 model location/version, expected checksums, and inference configuration. Git contains model references and configuration; model files remain in S3.
-
-This change must not modify the active Champion or Challenger assignment.
-
-The candidate should have unique release labels so that multiple releases of the same model version cannot accidentally share production traffic.
-
-### Step 7 — Deploy the candidate
-
-Argo CD detects the Git change and creates the candidate Deployment.
-
-Kubernetes pulls the exact ECR runtime image digest and supplies the candidate's model configuration and S3 read access.
-
-The container startup script downloads the model from the configured S3 location with retries and verifies the files, checksums, and expected identity. Only after verification succeeds does it start the API server. The FastAPI application's lifespan hook loads the verified local model. The Pod stays unready until this completes successfully.
-
-### Step 8 — Validate the deployed candidate
-
-The pipeline's test runner sends internal synthetic requests directly to the isolated candidate endpoint, without switching the stable Champion or Challenger Service. It checks the deployed image/model identity and runs prediction and feature-service integration checks against the target environment. For reference-score comparisons, use controlled test records with known feature values; changing live customer data is not a repeatable golden test.
-
-Verify:
-
-- Pods are Ready;
-- expected image digest is running;
-- expected model version is loaded;
-- downloaded model identity and checksums match the candidate configuration;
-- expected inference-code version is running;
-- prediction API and reference-output checks pass;
-- required feature services are reachable and return the fields/types required by the model;
-- required capacity is available.
-
-Save these results alongside the step 4 report. A failed check, timeout, or required feature missing from the target environment prevents activation.
-
-If all checks pass, the candidate is technically ready. The backend rechecks the original approval and captured inputs, then automatically continues to activation:
-
-```text
-Validating -> Activating -> Released
-```
-
-Readiness is an internal checkpoint, not a waiting state for a second user approval. Until the assignment update in section 7, the candidate remains isolated from live and mirrored application traffic.
-
----
-
-## 6. UI States
-
-The UI should use clear lifecycle states.
-
-| State | Meaning | Next action |
-|---|---|---|
-| Published | Model is registered in the catalog | Select |
-| Draft / awaiting approval | User selected the model; no release work has started | Review and explicitly confirm Yes, or remain in draft |
-| Approved / queued | Yes is recorded for exact inputs | Pipeline starts automatically |
-| Preparing | Approved runtime image build/reuse, model/runtime tests, and deployment are running | Wait or inspect failure |
-| Validating | Automated checks run against the isolated candidate | Automatically activate if checks and approval remain valid |
-| Activating | Role assignment is being applied under the original approval | Wait for verification |
-| Released | Candidate is active behind the role Service | Monitor / adjust traffic |
-| Failed | Preparation or release failed | Review and retry |
-
-The UI should show separately:
-
-- current released version;
-- current draft version;
-- approved operation's exact target and serving release identity;
-- operation status.
-
-A successful build alone is insufficient: deployment, readiness, prediction checks, and approval verification must all pass. After they pass, activation is automatic within the approved operation.
-
-Selecting No or closing the confirmation leaves the model in draft. The only approval comes before the pipeline starts.
-
----
-
-## 7. Upfront Approval and Automatic Activation
-
-Before any release job starts, the UI should show:
-
-- target environment;
-- selected role;
-- selected model version, artifact identity, and exact inference-code revision;
-- current released version;
-- current routing percentage;
-- current shadow ON/OFF state and the observed Challenger model version and serving-release ID.
-
-The user must explicitly confirm:
-
-```text
-Deploy & release = Yes
-```
-
-The confirmation must explain that Yes starts runtime image build or reuse, testing, and deployment and authorizes activation after successful checks. If the role currently has traffic, the approved model will inherit that traffic share when activated. For a Challenger release, show that an existing shadow ON setting will also apply to the new version after activation. The user can adjust live routing or switch shadow OFF separately before approving if required.
-
-No, cancel, or no answer starts nothing. The current release stays active. Approval is never inferred from saving a selection, an S3 event, a Slack message, or an existing approval for a different revision.
-
-After the approved pipeline in section 5 passes all checks, the backend should automatically:
-
-1. verify the candidate is still healthy and its prediction checks passed;
-2. confirm that the original approval is valid for the exact prepared release and the expected role assignment has not changed;
-3. update the role assignment in Git;
-4. wait for Argo CD reconciliation;
-5. verify the Kubernetes Service selector;
-6. verify the selected backend Pods are Ready;
-7. verify the expected model is actually serving;
-8. mark the operation Released only after observed state matches desired state.
-
-The audit record should include:
-
-- actor;
-- release ID;
-- previous release;
-- target role;
-- approval timestamp and approved inputs;
-- candidate and assignment Git revisions;
-- timestamp;
-- result.
-
-### Existing traffic must be preserved
-
-Release changes the model behind the role endpoint.
-
-It does not automatically change Generic Router live percentages or the shadow ON/OFF setting.
-
-Example:
-
-```text
-Before release
-
-Challenger -> 3.4
-Traffic    -> 10%
-```
-
-After releasing `3.6`:
-
-```text
-Challenger -> 3.6
-Traffic    -> 10%
-```
-
-If Challenger traffic is `0%`, the Service can switch to the new release while live traffic remains `0%`.
-
-If shadow is ON, mirrored calls follow the Challenger Service to the new release after activation, even at `0%` live traffic. If shadow is OFF, it stays OFF.
-
-Selecting No or canceling before approval requires no rollback because no release work has started. Canceling an operation after Yes is a separate action: automation must stop safely and reconcile any Git changes already made. It must not claim that already-applied changes were undone merely because a job was canceled.
-
----
-
-## 8. Live Routing and Shadow Execution Are Separate Controls
-
-The Generic Router UI must expose live routing and shadow execution separately. Existing percentage controls remain; any missing shadow controls and router behavior are new implementation work.
+The Generic Router UI exposes three related controls:
 
 | Control | User action | Effect |
 |---|---|---|
-| Live traffic percentages | Set Champion/Challenger shares, totaling 100% | Select which role's response determines the application result. |
-| Shadow execution | Set **ON** or **OFF**, then apply; default is **OFF** | ON adds asynchronous Challenger calls for requests served live by Champion. OFF stops new shadow calls once the router applies the change. |
-| Shadow model version | Select the required version for **Challenger** and complete **Deploy & release = Yes** | After validation and activation, the stable Challenger endpoint serves that exact model/runtime release. The routing UI displays the observed model version and serving-release ID. |
+| Live percentages | Set Champion/Challenger shares totaling 100%. | Select which role's prediction determines the application result. |
+| Shadow execution | Set **ON** or **OFF**, then apply; default is **OFF**. | ON permits asynchronous Challenger calls for Champion-served requests. OFF stops new shadow calls once routers apply the configuration. |
+| Shadow model version | Select and release the desired version as **Challenger**. | The stable Challenger endpoint becomes the shadow target; show its observed model version and serving-release ID. |
 
-The initial implementation has one released Challenger shared by live and shadow calls. It does not provide an independently selected third model. Requests already served live by Challenger do not trigger a duplicate call to that same model. Shadow responses are recorded for comparison and never determine the application result; timeouts or errors must not fail the live request. Shadow calls need bounded concurrency and timeouts so they cannot exhaust live-serving resources.
+The initial implementation has one released Challenger shared by live and shadow calls. There is no independently selected third model. Requests served live by Challenger do not duplicate a shadow call to the same model. Shadow results never determine the application response, and shadow errors/timeouts must not fail it. Bound shadow concurrency and timeouts; eligible calls may be dropped when limits are reached.
 
-### Select the shadow version
+### Select a version and enable shadow
 
-1. Select the target environment and desired model version in the catalog, with role **Challenger**. This only saves a draft.
-2. For shadow-only evaluation, set live routing to **Champion 100% / Challenger 0%** and apply it. Keep shadow OFF while preparing the first shadow release.
-3. Confirm **Deploy & release = Yes** for that exact Challenger version. The standard pipeline tests, deploys, and activates it. Drafts and unvalidated candidates cannot be shadow targets.
-4. Wait until the operation is Released and the UI shows the expected observed Challenger model version, serving-release ID, and readiness. Then turn shadow ON and apply the setting.
+1. Choose the environment and desired model as a Challenger draft.
+2. For shadow-only evaluation, apply **Champion 100% / Challenger 0%** and keep shadow OFF while preparing the first release.
+3. Approve the Challenger release and wait for **Released** with the expected observed version, serving-release ID, and readiness.
+4. Turn shadow ON and apply. The backend must confirm that the displayed release is still the active, healthy Challenger; reject a stale-target request.
 
-If the desired version is already the released, healthy Challenger, use it directly without another release. To change the shadow version later, release the new version as Challenger through the same approved flow. Existing shadow calls continue to the old release until the Service switches; in-flight calls may finish on the old version. Record the actual serving-release ID with each shadow result. If shadow remains ON, new calls follow the new release automatically, as disclosed in the release confirmation.
-
-### Turn shadow execution ON or OFF
-
-**ON:** The backend verifies that the displayed Challenger release is still the active, healthy assignment before applying the switch. It must reject a stale target rather than enable shadow for a version the user did not see. No candidate is built or deployed by this action. For the initial implementation, each Champion-served request is eligible for a shadow call; calls may be dropped when concurrency limits are reached.
-
-**OFF:** Apply the switch without running Jenkins or redeploying the model. Once applied by the routers, no new shadow calls are dispatched; existing calls finish or time out. OFF does not remove the Challenger Deployment or change its live percentage. To stop all application-driven Challenger execution, set both **shadow OFF** and **Challenger live traffic 0%**.
-
-The UI must show requested and observed shadow state separately while a change is applying, and confirm success only after all active router instances report the new configuration. Audit the actor, environment, configuration revision, target release, previous/new state, and result. New router instances must load the current configuration before handling traffic; shadow defaults to OFF when no valid configuration exists.
-
-Example: **Champion 100% / Challenger 0%, shadow ON, released Challenger 3.6**:
+If the desired version is already the released, healthy Challenger, enable shadow directly. Changing the shadow version uses the normal Challenger release process. If shadow stays ON, calls follow the newly activated release; in-flight calls may finish on the old one. Record the actual serving-release ID with every result.
 
 ```mermaid
 flowchart LR
     Request["Application request"] --> Router["Generic Router"]
     Router --> Champion["Champion: live prediction"]
     Champion --> Result["Application result"]
-    Router -.->|"Shadow ON: asynchronous copy"| Challenger["Released Challenger 3.6: shadow prediction"]
-    Challenger -.-> Comparison["Record score and serving-release ID for comparison"]
+    Router -.->|"Shadow ON"| Challenger["Released Challenger: asynchronous prediction"]
+    Challenger -.-> Compare["Store score and actual release ID for comparison"]
 ```
 
-Switching shadow OFF removes the asynchronous call in this example; the live path remains unchanged. **Challenger live traffic 0% alone does not disable shadow execution.**
+### Disable shadow and observe configuration
 
-Changing live percentages or shadow ON/OFF must not build an image, deploy a candidate, change a draft, or release a model. A release must preserve the current routing settings. Before activation, a candidate receives no normal live or mirrored application traffic; only internal synthetic validation requests are allowed during the approved pipeline.
+Turning shadow OFF stops new mirrored calls after all active routers apply the setting; existing calls finish or time out. It does not remove the Deployment or change live percentages. To stop all application-driven Challenger calls, use **shadow OFF and Challenger live traffic 0%**.
 
----
+Show requested and observed state separately while changes apply; confirm completion after all active router instances report the revision. New instances load current configuration before serving, defaulting shadow to OFF without valid configuration. Audit actor, environment, revision, target release, previous/new state, and result.
 
-## 9. Failure Handling, Promotion, and Rollback
+Routing changes do not start release work. Releases preserve routing settings: for example, Challenger `3.4` at 10% becomes Challenger `3.6` at 10%. An enabled shadow also follows the new release, including when its live share is 0%. Drafts and unvalidated candidates receive no mirrored application traffic.
 
-### Failure handling
+## 6. Failure, Cancellation, Promotion, and Rollback
 
-If any preparation step fails, active role assignments must stay unchanged.
+### Failure and cancellation
 
-Examples:
+Preparation, artifact verification, startup, readiness, prediction, or integration failures stop progress before activation and preserve active assignments. Show the failed stage, reason, operation ID, and available retry.
 
-- validation failure;
-- S3 download failure;
-- model identity or checksum mismatch;
-- image build failure;
-- ECR push/pull failure;
-- local model-load failure;
-- readiness failure;
-- prediction validation failure.
+If the assignment commit already exists, reconcile actual state and show both desired and observed assignments. Canceling a job does not undo a Git commit or an applied Service change. Stop further work safely and verify any partial activation before reporting its outcome. Canceling the confirmation before Yes requires no rollback because nothing has started.
 
-The UI should show:
+Retries use the same approved inputs and current-operation safeguards in section 4. A different target requires fresh approval.
 
-- failed stage;
-- failure reason;
-- operation ID;
-- retry option.
+### Promotion and rollback
 
-If a failure happens during activation after the Git assignment has already changed, the UI should show both:
+Both use the same approved release process. To promote Challenger `3.6`, select its tested release for Champion and explicitly approve that role change. Reuse the recorded image/model configuration, create candidate capacity if needed, run the required checks, and verify activation. Monitoring results alone do not authorize promotion; routing changes remain a separate user decision.
 
-```text
-Desired assignment
-Observed assignment
-```
+For rollback, select the previous tested release and approve it. Restore its exact image digest, immutable S3 artifacts/checksums, and saved configuration. Do not rebuild the old release from the current branch. New or restarted Pods must download and verify the recorded model.
 
-The platform must verify actual state instead of assuming that the change either fully succeeded or fully failed.
+Retain images, artifacts, configuration, and required Deployments while releases are active, preparing, activating, draining, or within the rollback retention period. Service updates are asynchronous and existing connections may still use old Pods; verify the new assignment and allow draining before removing previous capacity.
 
-Retries must remain within the original approved inputs. A different model, code revision, environment, or role requires a fresh Yes. Repeated requests must not create competing operations or allow a stale operation to overwrite a newer assignment.
+## 7. Implementation Work and Ownership
 
----
+Existing components include DS uploads, a FastAPI runtime with S3 download, Generic Router percentage controls, and stable role endpoints. The team already uses Compose in GitHub Actions for isolated tests. The NCM-specific integrations below still need implementation or verification.
 
-### Promotion
-
-Promotion uses the same standard release process.
-
-Example:
-
-```text
-Champion   -> 3.4
-Challenger -> 3.6
-```
-
-To promote `3.6`:
-
-1. select `3.6` for Champion;
-2. explicitly confirm **Deploy & release = Yes** for Champion;
-3. only then reuse the tested runtime image and exact S3 model configuration, creating the candidate Deployment if required;
-4. automatically activate it after checks pass under that approval;
-5. verify the Champion Service;
-6. keep routing changes as a separate user decision.
-
-Promotion should not happen automatically based only on monitoring results.
-
----
-
-### Rollback
-
-Rollback also uses the normal release mechanism.
-
-Select the previous release and explicitly confirm Yes before rollback processing starts. An existing image or Deployment does not bypass approval.
-
-Use the previous tested runtime image digest together with its exact S3 model location, artifact checksums, and recorded configuration. Any new or restarted rollback Pod downloads and verifies that same model before becoming Ready.
-
-Do not rebuild an old release from the current Git branch.
-
-Keep previous runtime images, S3 model files, and release configurations available for a defined rollback period. Restoring the image digest alone does not identify the model to serve.
-
-Do not remove a runtime image, S3 artifact, release configuration, or Deployment while any release that uses it is:
-
-- actively assigned;
-- being prepared;
-- being released;
-- draining;
-- retained for rollback.
-
-Because Service updates are asynchronous, old Pods may continue handling existing connections for a short period.
-
-Verify the new assignment before removing previous capacity.
-
----
-
-## 10. Example: Challenger 3.4 → 3.5 → 3.6
-
-| Action | Result | Active Challenger |
-|---|---|---|
-| DS uploads `3.5` and `3.6` | Both appear in the catalog | `3.4` |
-| User selects `3.5` | Draft only | `3.4` |
-| User changes draft to `3.6` | Draft changes only | `3.4` |
-| User selects No, cancels, or does nothing | No background release processing starts | `3.4` |
-| User explicitly confirms Deploy & release = Yes for `3.6` | Approval is recorded; only `3.6` starts preparation | `3.4` |
-| Pipeline builds or reuses the runtime image, tests it with model `3.6`, and deploys the candidate | Startup script downloads and verifies `3.6`; FastAPI loads it locally; isolated candidate is checked automatically | `3.4` |
-| All checks pass and approval is still valid | Automation switches the Challenger Service; no second approval | `3.6` |
-
-This example shows the main behavior:
-
-> **Before Yes: draft only, no preparation. After Yes: build or reuse the runtime image, test, deploy, validate, and activate automatically.**
-
----
-
-## 11. Component Responsibilities
-
-| Component | Responsibility |
+| Owner / component | Work to complete |
 |---|---|
-| DS publisher / S3 | Store immutable model artifacts, metadata, checksums, and golden samples with fixed inputs and reference outputs; agree numeric tolerances with the inference-code owner |
-| Inference-code owner | Maintain versioned inference/feature logic, compatibility mapping, and API/feature-contract tests; agree reference cases and tolerances with DS |
-| Model UI / backend | Manage drafts and approval, automate releases, expose live/shadow controls and observed release identity, and audit release/routing changes |
-| Jenkins | Run only after approval: validate separate model artifacts, build/reuse runtime image, test the pairing, push new images to ECR, and write candidate configuration |
-| ECR | Store immutable tested runtime images containing inference code and dependencies only |
-| Git / Helm | Store runtime image digests, S3 model references/checksums, candidate configuration, and active role assignments |
-| Argo CD | Reconcile Git state into Kubernetes |
-| Kubernetes | Run candidate/released Deployments and stable role Services |
-| Container startup script | Download the configured S3 model with retries, verify identity/checksums, and start the API server only after successful preparation |
-| FastAPI application | Load the verified local model in its lifespan hook and provide readiness/prediction endpoints |
-| Generic Router | Apply live percentages and runtime shadow ON/OFF; mirror asynchronously to the released Challenger with bounded execution; report applied configuration and actual serving identity |
-| Prometheus / Grafana | Monitor health, errors, latency, routing, model identity, and shadow calls/errors/drops by serving release |
+| DS and inference-code owner | Publish complete immutable artifacts and golden samples; maintain model/code mapping, feature/API contracts, reference cases, and tolerances. |
+| Runtime | Build runtime-only images; move download/retry/verification into the entrypoint; load locally in FastAPI lifespan; expose readiness and serving identity. |
+| UI / backend | Implement catalog/drafts, exact approval, lifecycle state, operation locks/deduplication, activation authorization, and audit records. |
+| Release automation | Implement the workflow, both test stages, reports, dispatch/runner access, bot commits, and safeguards in section 4. |
+| Infrastructure | Configure Helm, Argo CD, candidate isolation/labels, stable role Services, workload identity, and release retention. |
+| Generic Router | Implement the shadow controls, observed state, target checks, bounded asynchronous calls, and release identity reporting in section 5. |
+| Operations | Monitor health, latency, errors, traffic, model identity, and shadow calls/errors/drops by serving release in Prometheus/Grafana. |
 
----
+## 8. First Release and Acceptance Checks
 
-## 12. Existing Components and New Work
+Start with one NCM candidate. Exercise the workflow in section 4, then demonstrate shadow operation, a failed release, and rollback before expanding automation.
 
-### Existing components
-
-The following pieces already exist:
-
-- DS model upload to S3;
-- FastAPI runtime with S3 model download;
-- Generic Router traffic configuration;
-- stable Champion and Challenger Service endpoints.
-
-### New implementation work
-
-The new design requires:
-
-- model-to-inference-code mapping;
-- serving release definition pairing a runtime image digest with an immutable S3 model and configuration;
-- runtime-only image build/reuse with model artifacts excluded from the build context and image layers;
-- container startup script reusing the existing S3 download/retry logic, verifying model identity/checksums, and starting the API server only on success;
-- FastAPI lifespan initialization that loads the verified local model;
-- versioned golden samples and a Jenkins test runner that checks each model/runtime pairing through the prediction API, compares reference outputs, and saves a release validation report;
-- model catalog and draft-selection behavior;
-- one **Deploy & release** UI/backend action with explicit Yes before any release processing;
-- backend approval enforcement and automatic activation after successful checks;
-- candidate deployment workflow;
-- runtime shadow ON/OFF controls, observed Challenger version/state, configuration readback, and bounded asynchronous shadow execution in the Generic Router;
-- release operation tracking;
-- retry and deduplication handling;
-- audit history.
-
-Jenkins, Git, Helm, and Argo CD integration should be verified before the full workflow is considered implemented.
-
----
-
-## 13. First Release Plan
-
-The first implementation should use one NCM candidate and prove the complete lifecycle.
-
-### Phase 1
-
-1. DS uploads one NCM model to S3.
-2. The model is registered in the catalog.
-3. The exact inference-code mapping is added.
-4. User selects the model as a draft.
-5. Verify that selecting No, closing the dialog, or waiting starts no background release work.
-6. User reviews the exact target and explicitly confirms **Deploy & release = Yes**.
-7. The backend records approval and starts Jenkins with the captured inputs.
-8. Jenkins verifies the separate S3 artifacts and builds or reuses the compatible runtime image; no model files enter the image.
-9. Jenkins tests the runtime with the selected S3 model, then pushes a new image or records the existing ECR digest.
-10. Jenkins writes the runtime digest, exact S3 model location/checksums, and candidate configuration to Git.
-11. Argo CD deploys the candidate; the container startup script downloads and verifies the configured S3 model, then FastAPI loads it locally through its lifespan hook.
-12. Automated readiness and prediction checks pass.
-13. The backend rechecks the original approval and automatically updates the role assignment in Git.
-14. Argo CD updates the stable Service.
-15. The platform verifies the actual serving version and marks it Released.
-16. In the Generic Router UI, verify shadow ON/OFF against the released Challenger at 0% live traffic, then set live percentages separately as required.
-17. The team monitors the release.
-18. Promotion or rollback requires a new upfront Yes for that operation.
-
-This first phase should prove the main lifecycle before adding more advanced automation.
-
----
-
-## 14. First-Release Acceptance Criteria
-
-The first implementation is complete when:
-
-1. Uploading or cataloging a model starts no background release work.
-2. Selecting or changing a draft starts no Jenkins job, artifact download, validation job, image build, deployment Git change, or Kubernetes change.
-3. No, cancel, and no answer leave the current release unchanged and enqueue nothing.
-4. Jenkins uses the exact model, code commit, dependencies, and build definition.
-5. The ECR image contains only prediction runtime, inference code, and dependencies. Model artifacts, model metadata, and golden samples are absent from its build context and image layers.
-6. The container startup script downloads the exact model from its configured immutable S3 location with retries and verifies model identity/checksums before starting the API server. The FastAPI application's lifespan hook loads the verified local model without downloading artifacts. New or restarted Pods have the required S3 read access.
-7. Failed downloads, missing or invalid files, or identity/checksum mismatches prevent the API server from starting. Model-load failures prevent application startup. All keep the Pod unready and prevent activation.
-8. A candidate can be created even when no Deployment for that model version already exists.
-9. Only explicit **Yes** starts processing; direct backend calls and retries cannot bypass approval.
-10. Approval defaults to **No** and is bound to the exact reviewed model, code, environment, role, and draft revision.
-11. After Yes, runtime image build/reuse, testing, deployment, validation, and activation run automatically; there is no second approval after readiness. Candidates receive no application traffic until activation, and failed checks prevent the role switch.
-12. Release keeps the same stable Champion/Challenger DNS names.
-13. Release preserves Generic Router live percentages and shadow ON/OFF state. The release confirmation shows that an enabled shadow follows a newly activated Challenger version.
-14. Model or inference-code changes create a new serving release identity. A compatible model-only release reuses the runtime image without rebuilding it and passes tests for the new pairing.
-15. Rollback uses the previous tested runtime image digest, exact S3 model location/checksums, and saved configuration. Referenced images and S3 artifacts remain available for active releases and rollback retention.
-16. Draft edits cannot replace approved inputs; duplicate or stale operations cannot activate an unintended release.
-17. Approval is required before processing even when an image already exists or the role has 0% traffic.
-18. Each model/runtime pairing has a passing report tied to the exact image, model checksums, golden sample, and test-suite revision. Required prediction, contract, startup, and failure checks pass before candidate deployment; deployed prediction and feature-service checks pass before activation.
-19. With Champion 100%, Challenger 0%, and shadow ON, synthetic application requests produce Champion responses and asynchronous scores from the displayed released Challenger. Shadow scores never affect the live result. Drafts and candidates receive no mirrored application traffic.
-20. Shadow OFF stops new shadow calls after all active routers apply the configuration, without changing live percentages or running a deployment. Existing calls may finish or time out; shadow failures or concurrency limits do not fail live requests.
-21. The routing UI displays requested/observed shadow state and the actual target model version and serving-release ID, rejects stale-target enable requests, and audits changes. Switching the Challenger release preserves the toggle and records the actual release used for each score.
-
----
-
-## 15. Target Operating Model
-
-```text
-DS publishes model
-        ↓
-Model appears in catalog
-        ↓
-User selects draft
-        ↓
-User explicitly confirms Deploy & release = Yes
-        ↓
-Backend records exact approval and starts the pipeline
-        ↓
-Jenkins builds or reuses runtime image; tests it with the separate S3 model
-        ↓
-New runtime image is pushed to ECR, or existing digest is reused
-        ↓
-Git records runtime digest + S3 model configuration; Argo CD deploys candidate
-        ↓
-Container startup script downloads and verifies the configured S3 model
-        ↓
-FastAPI lifespan loads the verified local model
-        ↓
-Candidate passes automated validation
-        ↓
-Stable role Service automatically switches to approved release
-        ↓
-Generic Router keeps live percentages and shadow ON/OFF state
-        ↓
-Monitor
-        ↓
-Promote or rollback through the same process
-```
-
-Main principle:
-
-> **Without explicit Yes, no release processing starts. With Yes, the system builds or reuses the runtime image, tests it with the separate S3 model, deploys, validates, and activates the exact approved release.**
-
-The platform automates the technical execution.
-
-The user remains responsible for:
-
-- model selection;
-- explicit Yes before any release processing;
-- traffic percentage;
-- promotion;
-- rollback.
+| Check | Required evidence |
+|---|---|
+| Publication and drafts | Upload, catalog registration, draft edits, No, cancel, and no answer leave the current release unchanged and start no release work. Missing code mapping blocks approval. |
+| Approval enforcement | Yes captures exact inputs. Direct calls, dispatches, reruns, duplicate requests, and stale operations cannot bypass approval or change the target. |
+| Runtime/model separation | Image/build context contain no model artifacts. A compatible model-only release reuses the image and receives a new serving-release identity and passing pair report. |
+| Startup failure behavior | Clean startup downloads/verifies the exact artifacts and loads locally. Failed download, identity/checksum verification, or model load cannot become Ready or substitute another model. Restarted Pods have S3 access. |
+| Test gates | Both test stages in section 4.3 pass with matching reports. Missing/failed/canceled/timed-out results block progress; disposable test resources are cleaned up. |
+| Deployment and activation | The bot creates both infrastructure commits. Candidate creation works without a preexisting model Deployment. Candidates receive only synthetic validation traffic. Argo CD applies the recorded revisions; observed selector, Pods, and release identity match before Released. No second approval or manual YAML edits are needed in the target flow. |
+| Stable endpoints and routing | DNS names, live percentages, and shadow state survive a release. The confirmation discloses the traffic and shadow behavior inherited by the new version. |
+| Shadow behavior | At Champion 100% / Challenger 0%, ON produces Champion responses and asynchronous scores from the displayed released Challenger. OFF stops new shadow calls after configuration applies. Stale targets are rejected; failures/limits do not fail live requests; every score identifies the actual release. |
+| Failure, concurrency, and cancellation | Failed preparation preserves assignments. Retries retain approved inputs; old operations cannot overwrite newer assignments. Cancellation after a Git change reports and reconciles desired versus observed state. |
+| Promotion and rollback | Each starts with explicit approval, restores the recorded tested release configuration, verifies the role endpoint, and preserves routing controls. Retained artifacts and old capacity support recovery and draining. |
