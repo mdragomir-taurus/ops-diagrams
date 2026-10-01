@@ -149,6 +149,8 @@ Record the image digest produced by a build, workflow run ID/attempt, reports, a
 
 ### 4.2 Execution order: input, tool, and output
 
+See the [editable execution diagram](ncm-release-execution.drawio) or its [SVG preview](ncm-release-execution.svg).
+
 Implement these stages as dependent jobs in one workflow. Use `needs` to require preceding success and explicit outputs/artifacts to transfer results; jobs must not assume they share local files.
 
 | Step | Input | Tool and action | Required output |

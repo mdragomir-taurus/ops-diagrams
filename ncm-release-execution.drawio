@@ -1,0 +1,427 @@
+<mxfile host="65bd71144e">
+    <diagram id="ncm-release-execution" name="Execution order">
+        <mxGraphModel dx="1936" dy="1696" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1848" pageHeight="1340" background="#F5F7FB" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="eyebrow" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=11;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:11px;line-height:15.399999999999999px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;NCM  /  MODEL DELIVERY&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="18.4" width="900" x="56" y="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="title" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=36;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:36px;line-height:50.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;NCM release execution&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="53.4" width="1300" x="56" y="46" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=17;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:17px;line-height:23.799999999999997px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Eight steps from an approved model to a verified serving release.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="26.799999999999997" width="1500" x="56" y="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="trigger" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#C7D7F2;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="82" width="1736" x="56" y="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="trigger-heading" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;APPROVAL&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="480" x="22" y="11" as="geometry"/>
+                </mxCell>
+                <mxCell id="trigger-title" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=20;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:20px;line-height:28.0px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Deploy &amp;amp; release = Yes&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="31" width="500" x="22" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="trigger-note" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=12;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:12px;line-height:16.799999999999997px;font-weight:400;color:#56677D;text-align:left&quot;&gt;S3 upload and draft selection do not start release work.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="19.799999999999997" width="570" x="22" y="57" as="geometry"/>
+                </mxCell>
+                <mxCell id="backend-heading" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Backend&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="320" x="635" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="backend-note" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:19.599999999999998px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Record approval + operation ID&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="22.599999999999998" width="350" x="635" y="47" as="geometry"/>
+                </mxCell>
+                <mxCell id="dispatch-heading" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=12;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:12px;line-height:16.799999999999997px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;GITHUB ACTIONS  /  ncm-release.yml&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="19.799999999999997" width="635" x="1062" y="17" as="geometry"/>
+                </mxCell>
+                <mxCell id="dispatch-note" connectable="0" parent="trigger" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=17;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:17px;line-height:23.799999999999997px;font-weight:700;color:#14263E;text-align:left&quot;&gt;workflow_dispatch(operation_id) + approved ref&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="26.799999999999997" width="635" x="1062" y="44" as="geometry"/>
+                </mxCell>
+                <mxCell id="approval-to-backend" edge="1" parent="1" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#245DD6;">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="602" y="181" as="sourcePoint"/>
+                        <mxPoint x="660" y="181" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="backend-to-dispatch" edge="1" parent="1" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#245DD6;">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="1024" y="181" as="sourcePoint"/>
+                        <mxPoint x="1090" y="181" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="phase-one" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=13;fontColor=#56677D;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:13px;line-height:18.2px;font-weight:700;color:#56677D;text-align:left&quot;&gt;01-04  /  PREPARE, TEST &amp;amp; COMMIT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="21.2" width="960" x="56" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="workflow-note" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=12;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:12px;line-height:16.799999999999997px;font-weight:400;color:#56677D;text-align:left&quot;&gt;One workflow; dependent jobs advance on success.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="19.799999999999997" width="540" x="1252" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="phase-two" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=13;fontColor=#56677D;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:13px;line-height:18.2px;font-weight:700;color:#56677D;text-align:left&quot;&gt;05-08  /  DEPLOY, VALIDATE &amp;amp; RELEASE&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="21.2" width="1080" x="56" y="711" as="geometry"/>
+                </mxCell>
+                <mxCell id="activation-note" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=12;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:12px;line-height:16.799999999999997px;font-weight:400;color:#56677D;text-align:left&quot;&gt;One approval covers both deployment and activation.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="19.799999999999997" width="540" x="1252" y="711" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="56" y="294" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-number-bg" parent="step-1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EDF3FF;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-number" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#245DD6;text-align:center&quot;&gt;01&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-title" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Verify inputs&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-tool" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;BACKEND + GIT + S3&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-divider" parent="step-1" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-input-label" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-input" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;operation_id + approved snapshot&lt;br/&gt;Model, code, config and revisions&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-action-label" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-action" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Check approval; resolve exact code.&lt;br/&gt;Download S3 files; verify checksums.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-output-bg" parent="step-1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EDF3FF;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-output-label" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;OUTPUT / VERIFIED INPUTS&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-1-output" connectable="0" parent="step-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#245DD6;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#245DD6;text-align:left&quot;&gt;Verified model and runtime inputs&lt;br/&gt;Bound to this operation and attempt&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="502" y="294" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-number-bg" parent="step-2" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EDF3FF;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-number" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#245DD6;text-align:center&quot;&gt;02&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-title" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Prepare image&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-tool" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;DOCKER + ECR&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-divider" parent="step-2" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-input-label" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-input" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Verified runtime build inputs&lt;br/&gt;Or a compatible existing image&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-action-label" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-action" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Build if needed; publish to ECR.&lt;br/&gt;Reuse the exact compatible digest.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-output-bg" parent="step-2" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EDF3FF;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-output-label" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#245DD6;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#245DD6;text-align:left&quot;&gt;OUTPUT / IMMUTABLE IMAGE&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-2-output" connectable="0" parent="step-2" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#245DD6;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#245DD6;text-align:left&quot;&gt;Runtime image @sha256:digest&lt;br/&gt;Same digest for tests and deployment&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="948" y="294" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-number-bg" parent="step-3" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#E9F7F6;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-number" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#087E83;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#087E83;text-align:center&quot;&gt;03&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-title" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Test model/runtime&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-tool" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#087E83;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#087E83;text-align:left&quot;&gt;GITHUB ACTIONS + DOCKER COMPOSE&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-divider" parent="step-3" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-input-label" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-input" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Image digest + approved S3 model&lt;br/&gt;Golden samples + versioned tests&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-action-label" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-action" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Run golden, contract, startup&lt;br/&gt;and failure checks through the API.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-output-bg" parent="step-3" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#E9F7F6;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-output-label" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#087E83;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#087E83;text-align:left&quot;&gt;OUTPUT / PASS REQUIRED&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-3-output" connectable="0" parent="step-3" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#087E83;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#087E83;text-align:left&quot;&gt;Passing report + release identity&lt;br/&gt;Matches operation, image and model&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="1394" y="294" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-number-bg" parent="step-4" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#F3EEFC;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-number" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#7951BF;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#7951BF;text-align:center&quot;&gt;04&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-title" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Commit candidate&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-tool" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#7951BF;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#7951BF;text-align:left&quot;&gt;GITHUB APP / WORKFLOW BOT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-divider" parent="step-4" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-input-label" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-input" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Validated pair + matching report&lt;br/&gt;Serving-release configuration&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-action-label" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-action" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Bot commits candidate configuration&lt;br/&gt;to the infrastructure repository.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-output-bg" parent="step-4" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#F3EEFC;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-output-label" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#7951BF;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#7951BF;text-align:left&quot;&gt;OUTPUT / COMMIT 1&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-4-output" connectable="0" parent="step-4" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#7951BF;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#7951BF;text-align:left&quot;&gt;Image digest + S3 refs + release ID&lt;br/&gt;Active role assignments unchanged&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="56" y="748" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-number-bg" parent="step-5" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#FFF6E4;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-number" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#9B680E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#9B680E;text-align:center&quot;&gt;05&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-title" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Deploy candidate&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-tool" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#9B680E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#9B680E;text-align:left&quot;&gt;ARGO CD + HELM + KUBERNETES&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-divider" parent="step-5" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-input-label" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-input" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Commit 1 on the tracked branch&lt;br/&gt;Exact image and model configuration&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-action-label" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-action" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Argo CD syncs; Kubernetes starts Pods.&lt;br/&gt;Entrypoint verifies S3; FastAPI loads.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-output-bg" parent="step-5" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#FFF6E4;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-output-label" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#9B680E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#9B680E;text-align:left&quot;&gt;OUTPUT / CANDIDATE PODS&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-5-output" connectable="0" parent="step-5" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#9B680E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#9B680E;text-align:left&quot;&gt;Ready candidate application Pods&lt;br/&gt;Synthetic validation traffic only&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="502" y="748" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-number-bg" parent="step-6" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#E9F7F6;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-number" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#087E83;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#087E83;text-align:center&quot;&gt;06&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-title" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Validate candidate&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-tool" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#087E83;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#087E83;text-align:left&quot;&gt;GITHUB ACTIONS + KUBERNETES JOB&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-divider" parent="step-6" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-input-label" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-input" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Candidate endpoint + release identity&lt;br/&gt;Known test records and expectations&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-action-label" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-action" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Check identity, predictions, capacity&lt;br/&gt;and actual feature-service integration.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-output-bg" parent="step-6" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#E9F7F6;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-output-label" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#087E83;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#087E83;text-align:left&quot;&gt;OUTPUT / PASS REQUIRED&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-6-output" connectable="0" parent="step-6" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#087E83;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#087E83;text-align:left&quot;&gt;Successful Job + matching report&lt;br/&gt;Checks pass before activation&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="948" y="748" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-number-bg" parent="step-7" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EAF7F0;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-number" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#19754F;text-align:center&quot;&gt;07&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-title" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Activate&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-tool" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#19754F;text-align:left&quot;&gt;BACKEND + WORKFLOW BOT + ARGO CD&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-divider" parent="step-7" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-input-label" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-input" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Both passing reports + original approval&lt;br/&gt;Current operation and role assignment&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-action-label" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-action" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Backend rechecks; bot commits.&lt;br/&gt;Argo CD updates the role Service.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-output-bg" parent="step-7" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EAF7F0;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-output-label" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#19754F;text-align:left&quot;&gt;OUTPUT / COMMIT 2&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-7-output" connectable="0" parent="step-7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#19754F;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#19754F;text-align:left&quot;&gt;Stable endpoint selects this release&lt;br/&gt;Live and shadow settings preserved&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;absoluteArcSize=1;fillColor=#FFFFFF;strokeColor=#DCE4EE;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="340" width="398" x="1394" y="748" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-number-bg" parent="step-8" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EAF7F0;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="38" width="38" x="20" y="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-number" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=18;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:18px;line-height:25.2px;font-weight:700;color:#19754F;text-align:center&quot;&gt;08&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="28.2" width="38" x="20" y="27" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-title" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=21;fontColor=#14263E;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:21px;line-height:29.4px;font-weight:700;color:#14263E;text-align:left&quot;&gt;Verify release&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="32.4" width="308" x="72" y="19" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-tool" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#19754F;text-align:left&quot;&gt;GITHUB ACTIONS + BACKEND&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="308" x="72" y="52" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-divider" parent="step-8" style="rounded=0;whiteSpace=wrap;html=1;arcSize=0;absoluteArcSize=1;fillColor=#DCE4EE;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="1" width="358" x="20" y="82" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-input-label" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;INPUT&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="97" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-input" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#56677D;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#56677D;text-align:left&quot;&gt;Assignment revision + expected release&lt;br/&gt;Observed Service and backend Pods&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="117" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-action-label" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#77869A;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#77869A;text-align:left&quot;&gt;ACTION&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="358" x="20" y="171" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-action" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#14263E;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#14263E;text-align:left&quot;&gt;Verify selector, readiness and identity.&lt;br/&gt;Backend records the observed result.&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="358" x="20" y="191" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-output-bg" parent="step-8" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;absoluteArcSize=1;fillColor=#EAF7F0;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="81" width="374" x="12" y="247" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-output-label" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#19754F;text-align:left&quot;&gt;OUTPUT / RELEASED&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="350" x="24" y="258" as="geometry"/>
+                </mxCell>
+                <mxCell id="step-8-output" connectable="0" parent="step-8" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=14;fontColor=#19754F;fontStyle=0;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:14px;line-height:21px;font-weight:400;color:#19754F;text-align:left&quot;&gt;Verified serving release&lt;br/&gt;Only after actual state matches&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="45" width="350" x="24" y="279" as="geometry"/>
+                </mxCell>
+                <mxCell id="approved-start" edge="1" parent="1" source="trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#245DD6;exitX=0.11463133640552996;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-1" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="255" y="243"/>
+                            <mxPoint x="28" y="243"/>
+                            <mxPoint x="28" y="464"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="flow-1-2" edge="1" parent="1" source="step-1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8899AE;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-2" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow-2-3" edge="1" parent="1" source="step-2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8899AE;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-3" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow-3-4" edge="1" parent="1" source="step-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#19754F;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-4" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="gate-3-pass" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#19754F;text-align:center&quot;&gt;PASS&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="48" x="1346" y="437" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow-5-6" edge="1" parent="1" source="step-5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8899AE;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-6" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow-6-7" edge="1" parent="1" source="step-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#19754F;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-7" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="gate-6-pass" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=10;fontColor=#19754F;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:10px;line-height:14.0px;font-weight:700;color:#19754F;text-align:center&quot;&gt;PASS&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="17" width="48" x="900" y="891" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow-7-8" edge="1" parent="1" source="step-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8899AE;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-8" value="">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow-4-5" edge="1" parent="1" source="step-4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=0;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#8899AE;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="step-5" value="">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1593" y="674"/>
+                            <mxPoint x="28" y="674"/>
+                            <mxPoint x="28" y="918"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="commit-handoff-bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=17;absoluteArcSize=1;fillColor=#F5F7FB;strokeColor=none;strokeWidth=1;shadow=0;collapsible=0;" value="" vertex="1">
+                    <mxGeometry height="34" width="446" x="646" y="657" as="geometry"/>
+                </mxCell>
+                <mxCell id="commit-handoff-text" connectable="0" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=12;fontColor=#7951BF;fontStyle=1;spacing=0;overflow=hidden;" value="&lt;div style=&quot;font-family:Segoe UI,Arial,sans-serif;font-size:12px;line-height:16.799999999999997px;font-weight:700;color:#7951BF;text-align:center&quot;&gt;COMMIT 1  /  READY FOR ARGO CD SYNC&lt;/div&gt;" vertex="1">
+                    <mxGeometry height="19.799999999999997" width="426" x="656" y="664" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
