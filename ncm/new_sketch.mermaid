@@ -1,0 +1,42 @@
+flowchart TB
+    DS["DS Team<br/>6 Model Types"]
+
+    DS --> CC["C/C Pipeline"]
+    CC --> CUR["Current 4 Types<br/>ACH | MTU | NCM | Pringing"]
+    CC --> REM["Remaining 2 Types"]
+
+    REM --> NT["Non-Tenured"]
+    REM --> T["Tenured"]
+
+    subgraph OPS["Tenured — Special Ops Pipeline (Proposed)"]
+        direction TB
+        TX["Incoming Transaction"]
+        FAN["Send Same Transaction<br/>to Both Models"]
+        MT["Model 1<br/>mt_tenured"]
+        ATO["Model 2<br/>ATO"]
+        S1["MT Tenured Score"]
+        S2["ATO Score"]
+        RULE["Rule Engine<br/>Combined Decision Logic"]
+        DEC["Final Transaction Decision"]
+
+        TX --> FAN
+        FAN --> MT
+        FAN --> ATO
+        MT --> S1
+        ATO --> S2
+        S1 --> RULE
+        S2 --> RULE
+        RULE --> DEC
+    end
+
+    T -.-> TX
+
+    classDef current fill:#dcecff,stroke:#4a82c4,color:#183b63
+    classDef pending fill:#fff0d6,stroke:#cd953b,color:#744a0c
+    classDef models fill:#e1eaff,stroke:#527ac0,color:#203d71
+    classDef rule fill:#d8f2e5,stroke:#36966c,color:#185d3e
+
+    class CC,CUR current
+    class REM,NT,T pending
+    class MT,ATO,S1,S2 models
+    class RULE,DEC rule
